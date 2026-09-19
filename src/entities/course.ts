@@ -71,82 +71,85 @@ export interface CourseEntry extends ObstacleSpec {
   ride?: Ride;
 }
 
+
 const RIDE: Ride = { speed: 7, trigger: 32 };
 /** How much closer than its waiting spot a rider meets a runner going BASE_SPEED. */
 const pullOut = (r: Ride) => (r.trigger * r.speed) / (BASE_SPEED + r.speed);
 
 type Row = [kind: ObstacleSpec['kind'], metres: number, lane: number, ride?: true];
 
-// Metres are where the runner meets the obstacle. Lane is -1..1 across the road;
-// positive = the runner's right = the city side.
-const A = ANCHORS;
-const ROWS: Row[] = [
-  // ── Tha Phae Gate → south-east corner ──────────────────────────────────
-  // 0-96 m is the learn-to-steer zone, and the corner takes the rest of the
-  // first breath. The first two obstacles are gifts on the outer lanes.
-  ['splash', A.seCorner - 7, 0.75], // Songkran kid lingering from the gate crowd
-  ['motorbike', A.seCorner + 27, -0.4], // first parked bike: a hard dodge, forgiving spacing
+const ROWS: Row[] = [];
+const put = (kind: Row[0], metres: number, lane: number, ride?: true) =>
+  ROWS.push([kind, metres, lane, ride]);
 
-  // ── South moat: dog, then the Chiang Mai Gate night market ────────────
-  ['dog', A.seCorner + 53, 0.4], // just out of the corner: ~65 m of open road to spend the boost on
-  // The market opens 19 m after the boost ends. Stalls zig-zag around centre
-  // so the run has to weave; refreshing (not stacking) food keeps it fair.
-  ['food', A.chiangMaiGate - 24, -0.55],
-  ['food', A.chiangMaiGate - 10, 0.2],
-  ['food', A.chiangMaiGate + 4, -0.3], // ← Chiang Mai Gate itself at 286 m
-  ['food', A.chiangMaiGate + 18, 0.55],
-  ['food', A.chiangMaiGate + 32, -0.1],
-  // Traffic spills out of the gate junction as the market ends.
-  ['motorbike', A.chiangMaiGate + 60, 0.3, true],
-  ['motorbike', A.chiangMaiGate + 78, -0.35, true],
-  ['splash', A.swCorner - 48, -0.6], // breather: an outer-lane freebie into the corner
+/**
+ * A run of one kind spread evenly between two marks, cycling through lanes.
+ * Authoring at this level keeps the intent of a stretch readable -- "the
+ * massage strip runs from here to here, on the shop side" -- instead of a
+ * wall of individual coordinates.
+ */
+const stretch = (
+  kind: Row[0],
+  from: number,
+  to: number,
+  count: number,
+  lanes: number[],
+  ride?: true,
+) => {
+  for (let i = 0; i < count; i++) {
+    const m = count === 1 ? from : from + ((to - from) * i) / (count - 1);
+    put(kind, m, lanes[i % lanes.length], ride);
+  }
+};
 
-  // ── South-west corner → Suan Prung → west moat ────────────────────────
-  ['massage', A.swCorner + 40, 0.65], // first shopfront after the SW corner, city side
-  // The west moat is the longest straight, so this dog has the most road to spend.
-  ['dog', A.swCorner + 66, -0.4], // ~65 m boost
-  // Suan Dok Gate is the busiest junction on the loop (Suthep Rd + the
-  // Nimman side spill in here); bike density peaks and then drops off.
-  ['motorbike', A.suanDokGate + 10, 0.45, true],
-  ['motorbike', A.suanDokGate + 24, -0.25],
-  ['motorbike', A.suanDokGate + 37, 0.1, true],
-  ['motorbike', A.suanDokGate + 54, -0.5, true],
-  ['splash', A.suanDokGate + 82, 0.35],
-  ['motorbike', A.nwCorner - 23, 0.35, true],
-  ['splash', A.nwCorner + 13, -0.3], // north-west corner apex
+const A2 = ANCHORS;
 
-  // ── North-west corner → north moat → Chang Phuak ──────────────────────
-  ['massage', A.nwCorner + 45, 0.65], // straight after the corner
-  ['dog', A.nwCorner + 67, -0.4], // ~65 m of open north straight to spend it on
-  // Chang Phuak Gate's night-food stalls: a shorter, tighter market.
-  ['food', A.changPhuakGate - 12, 0.4],
-  ['food', A.changPhuakGate + 2, -0.45], // ← Chang Phuak Gate at 886 m
-  ['food', A.changPhuakGate + 16, 0.1],
-  ['motorbike', A.changPhuakGate + 40, -0.3, true],
-  ['motorbike', A.changPhuakGate + 56, 0.4, true],
-  ['motorbike', A.changPhuakGate + 74, -0.1],
-  ['splash', A.sriPhumCorner - 54, 0.55],
+// ═══ LEG 1 · Tha Phae → Chiang Mai Gate ═══════════════════════════════════
+// Teach, then tempt. Nothing before CLEAR_ZONE_M. The first obstacles sit on
+// the outer lanes and are free to ignore, so a new player learns that lanes
+// matter before anything punishes them for not knowing.
+stretch('splash', 170, 430, 3, [0.8, -0.75, 0.7]);
+put('motorbike', 520, -0.55);
+put('dog', 610, 0.35); // first boost, onto open road
+stretch('massage', 760, 1040, 5, [0.7, -0.65, 0.75, -0.7, 0.65]); // Lanna massage strip
+stretch('motorbike', 1120, 1330, 3, [0.35, -0.4, 0.2], true); // traffic out of the sois
+stretch('food', 1400, 1560, 4, [-0.5, 0.45, -0.25, 0.5]); // market into the gate
 
-  // ── Sri Phum corner → Moon Muang → Tha Phae Gate ──────────────────────
-  ['motorbike', A.sriPhumCorner - 38, -0.15, true],
-  ['motorbike', A.sriPhumCorner - 16, -0.4, true], // Sri Phum junction, second busiest
-  ['motorbike', A.sriPhumCorner, 0.3, true],
-  ['food', A.sriPhumCorner + 24, 0.7], // Sompet-market side of Moon Muang
-  // Moon Muang Road: the massage strip. Shopfronts on the city side (right),
-  // with one lady stepping out to wave the runner in.
-  ['massage', A.sriPhumCorner + 52, 0.7],
-  ['massage', A.sriPhumCorner + 68, 0.65],
-  ['massage', A.sriPhumCorner + 84, -0.15], // steps into the road
-  ['massage', A.sriPhumCorner + 100, 0.7],
-  // Songkran at the gate, right on the finish line: a last gauntlet.
-  ['splash', A.finish - 36, 0.4],
-  ['splash', A.finish - 23, -0.45],
-  ['splash', A.finish - 10, 0.1],
-];
+// ═══ LEG 2 · Chiang Mai → Suan Dok ════════════════════════════════════════
+// Songkran. Water everywhere, traffic threading through it. Lanes tighten.
+put('dog', A2.chiangMaiGate + 90, -0.3);
+stretch('splash', 1800, 2260, 7, [0, -0.45, 0.4, 0.15, -0.35, 0.5, -0.15]);
+stretch('motorbike', 1900, 2340, 4, [-0.4, 0.3, -0.2, 0.45], true);
+stretch('massage', 2420, 2660, 4, [0.6, -0.6, 0.55, -0.5]);
+put('dog', 2740, 0.25);
+stretch('splash', 2820, 3080, 5, [-0.2, 0.35, 0, -0.4, 0.3]);
+stretch('food', 2960, 3160, 3, [0.5, -0.45, 0.25]);
+
+// ═══ LEG 3 · Suan Dok → Chang Phuak ═══════════════════════════════════════
+// The quiet leg, and where a good time is actually made. Fewer obstacles but
+// meaner placement: more of them sit on the racing line.
+put('dog', A2.suanDokGate + 70, 0);
+stretch('motorbike', 3380, 3820, 4, [0.15, -0.2, 0.1, -0.15], true);
+stretch('splash', 3900, 4080, 3, [-0.3, 0.25, 0]);
+stretch('massage', 4140, 4340, 3, [0.55, -0.5, 0.15]);
+put('dog', 4420, -0.2);
+stretch('motorbike', 4480, 4760, 4, [0, 0.25, -0.25, 0.1], true);
+
+// ═══ LEG 4 · Chang Phuak → Finish ═════════════════════════════════════════
+// Night market crush, then the run home. Densest and most central: by now the
+// player knows the controls, so this is where the lap earns its time.
+stretch('food', 4880, 5180, 6, [0.4, -0.35, 0.2, -0.45, 0.3, -0.15]);
+stretch('massage', 5060, 5380, 5, [-0.3, 0.35, -0.2, 0.4, 0]);
+stretch('motorbike', 5240, 5720, 6, [0.1, -0.2, 0, 0.25, -0.15, 0.2], true);
+put('dog', 5800, 0.3); // last boost, into the sprint
+stretch('splash', 5880, 6180, 5, [0, -0.3, 0.25, -0.15, 0.2]);
+stretch('motorbike', 6020, 6280, 3, [-0.2, 0.15, 0], true);
+// Songkran gauntlet across the finish line itself.
+stretch('splash', 6300, 6370, 3, [0.35, -0.35, 0]);
 
 const counts: Record<string, number> = {};
 
-const authored: CourseEntry[] = ROWS.map(([kind, metres, lane, rides]) => {
+export const COURSE: CourseEntry[] = ROWS.map(([kind, metres, lane, rides]) => {
   const n = (counts[kind] = (counts[kind] ?? 0) + 1);
   return {
     id: `${kind}-${n}`,
@@ -155,71 +158,7 @@ const authored: CourseEntry[] = ROWS.map(([kind, metres, lane, rides]) => {
     lane,
     ...(rides ? { ride: RIDE } : {}),
   };
-});
-
-// ── Density fill ──────────────────────────────────────────────────────────
-// The authored ROWS above were tuned for a 1200m lap. On the real 6400m moat
-// their absolute-metre offsets leave gaps of up to 754m -- about 47 seconds of
-// empty road. This walks the authored list and drops extra obstacles into any
-// gap wider than MAX_GAP so there is always something coming.
-//
-// Keith: this is a stopgap for the demo, not a replacement for issue #7.
-// Hand-authored pacing beats generated pacing every time; delete this the
-// moment your retuned ROWS cover the lap.
-// Difficulty ramps across the lap: obstacles crowd in as you approach the
-// finish. Early legs breathe at ~72m between fills; the run home is ~34m,
-// roughly half the recovery time. Progress is measured from the clear zone
-// so leg one is genuinely a warm-up.
-const GAP_START = 72;
-const GAP_END = 34;
-const gapAt = (metres: number) => {
-  const p = Math.min(1, Math.max(0, (metres - CLEAR_ZONE_M) / (TRACK_LENGTH - CLEAR_ZONE_M)));
-  return GAP_START + (GAP_END - GAP_START) * p;
-};
-const FILL_KINDS: ObstacleSpec['kind'][] = [
-  'motorbike', 'splash', 'food', 'massage', 'motorbike', 'splash', 'massage', 'dog',
-];
-// Weighted toward the centre on purpose. Keith's own note: an obstacle with
-// |lane| < ~0.27 sits on the centreline and catches anyone who never steers,
-// so central lanes are the difficulty knob and edge lanes are gifts. Most of
-// these must actually be dodged.
-const FILL_LANES = [-0.15, 0.55, 0.1, -0.6, 0.22, -0.25, 0.65, 0, -0.45, 0.18];
-
-function fill(list: CourseEntry[]): CourseEntry[] {
-  const out: CourseEntry[] = [];
-  let n = 0;
-  const startM = CLEAR_ZONE_M;
-  let cursor = startM;
-
-  const push = (from: number, to: number) => {
-    const gap = gapAt(from);
-    const span = to - from;
-    if (span <= gap) return;
-    const count = Math.floor(span / gap);
-    const step = span / (count + 1);
-    for (let i = 1; i <= count; i++) {
-      const metres = from + step * i;
-      const kind = FILL_KINDS[n % FILL_KINDS.length];
-      // Lanes tighten toward the centreline late on, so the last leg cannot
-      // be run on autopilot down one edge.
-      const p = Math.min(1, Math.max(0, (metres - CLEAR_ZONE_M) / (TRACK_LENGTH - CLEAR_ZONE_M)));
-      const lane = FILL_LANES[n % FILL_LANES.length] * (1 - 0.55 * p);
-      out.push({ id: `fill-${n}`, kind, t: metres / TRACK_LENGTH, lane });
-      n++;
-    }
-  };
-
-  for (const entry of list) {
-    const metres = entry.t * TRACK_LENGTH;
-    push(cursor, metres);
-    out.push(entry);
-    cursor = metres;
-  }
-  push(cursor, TRACK_LENGTH - 25);
-  return out.sort((a, b) => a.t - b.t);
-}
-
-export const COURSE: CourseEntry[] = fill(authored);
+}).sort((a, b) => a.t - b.t);
 
 if (import.meta.env.DEV) {
   COURSE.forEach((o, i) => {
