@@ -35,10 +35,7 @@ function Title() {
       </div>
 
       <div className="centre-stack">
-        <h1 className="logo">
-          <span className="logo-moat">Moat</span>
-          <span className="logo-runner">Runner</span>
-        </h1>
+        <img className="logo-art" src="/brand/logo.png" alt="Moat Runner — Chiang Mai" />
         <p className="tagline">Run the Chiang Mai Moat</p>
         <button className="btn btn-go" onClick={() => beginRun(start)}>
           ▶ Start Run
@@ -58,10 +55,7 @@ function Results() {
 
   return (
     <div className="screen results-screen">
-      <h1 className="logo small">
-        <span className="logo-moat">Moat</span>
-        <span className="logo-runner">Runner</span>
-      </h1>
+      <img className="logo-art small" src="/brand/logo.png" alt="Moat Runner" />
       <p className="run-complete">Run Complete!</p>
 
       <div className="final-time-box">

@@ -262,3 +262,16 @@ button { font: inherit; cursor: pointer; }
 @media (prefers-reduced-motion: reduce) {
   .held { animation: none; }
 }
+
+/* ── Logo artwork ───────────────────────────────────────────────────── */
+.logo-art {
+  width: min(420px, 62vw);
+  height: auto;
+  display: block;
+  /* The art already carries its own depth; a soft ground shadow just seats
+     it against the scene rather than doubling the bevel. */
+  filter: drop-shadow(0 10px 26px rgba(0, 0, 0, .45));
+  user-select: none;
+  -webkit-user-drag: none;
+}
+.logo-art.small { width: min(260px, 46vw); }
