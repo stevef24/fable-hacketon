@@ -49,6 +49,48 @@ function rand(seed: number) {
   return x - Math.floor(x);
 }
 
+/**
+ * A tapering temple spire: plinth, dome, spire, gold tip. Non-instanced --
+ * there are only a handful, each needs distinct per-tier geometry anyway,
+ * and a handful of extra draw calls is nothing next to the walls/buildings.
+ */
+function Chedi({ position }: { position: [number, number, number] }) {
+  return (
+    <group position={position}>
+      <mesh position={[0, 2, 0]} castShadow>
+        <boxGeometry args={[9, 4, 9]} />
+        <meshLambertMaterial color="#e8d5a8" />
+      </mesh>
+      <mesh position={[0, 5.5, 0]} castShadow>
+        <boxGeometry args={[6.5, 3, 6.5]} />
+        <meshLambertMaterial color="#d9c088" />
+      </mesh>
+      <mesh position={[0, 9, 0]} castShadow>
+        <sphereGeometry args={[3.6, 12, 8]} />
+        <meshLambertMaterial color="#efe0b8" />
+      </mesh>
+      <mesh position={[0, 15, 0]} castShadow>
+        <coneGeometry args={[1.6, 9, 10]} />
+        <meshStandardMaterial
+          color="#f2c94c"
+          emissive="#e8b23a"
+          emissiveIntensity={0.6}
+          toneMapped={false}
+        />
+      </mesh>
+      <mesh position={[0, 20, 0]}>
+        <sphereGeometry args={[0.5, 8, 8]} />
+        <meshStandardMaterial
+          color="#fff2b8"
+          emissive="#fff2b8"
+          emissiveIntensity={1.4}
+          toneMapped={false}
+        />
+      </mesh>
+    </group>
+  );
+}
+
 export default function City() {
   const road = useMemo(() => ribbon(8, 0, 0), []);
   const verge = useMemo(() => ribbon(13, -0.05, 0), []);
@@ -95,24 +137,123 @@ export default function City() {
     return out;
   }, []);
 
+  // Three archetypes rather than one box at a random scale (F3): a narrow
+  // 2-storey shophouse, a wide single-storey market front, and a tall
+  // narrow shophouse -- each with its own proportions, roof pitch and
+  // balcony. A sparse deterministic subset (i % 37 === 11) is a landmark
+  // building with a steeper, taller temple-style roof, so the skyline
+  // isn't perfectly uniform. Every part below (walls/roof/awning/balcony)
+  // is instanced separately but indexed by this same array.
+  const BUILDING_COUNT = 300;
   const buildings = useMemo(() => {
-    const out: { pos: [number, number, number]; yaw: number; s: [number, number, number]; c: string }[] = [];
+    const out: {
+      pos: [number, number, number];
+      yaw: number;
+      s: [number, number, number];
+      c: string;
+      roofH: number;
+      roofC: string;
+      hasBalcony: boolean;
+      awningC: string;
+    }[] = [];
     const palette = ['#c98b5e', '#b5764f', '#d9a978', '#a86b47', '#c2a074', '#8f5f3f'];
-    for (let i = 0; i < 300; i++) {
-      const t = i / 300;
+    const roofPalette = ['#7d3a28', '#5c3a2e', '#8a4a2f'];
+    const awningPalette = ['#d7263d', '#2f7fbf', '#f2b134', '#57a05a'];
+    for (let i = 0; i < BUILDING_COUNT; i++) {
+      const t = i / BUILDING_COUNT;
       const p = getPointAt(t, new Vector3());
       const r = getRightAt(t, new Vector3());
       const f = getTangentAt(t, new Vector3());
       const depth = 20 + rand(i) * 55;
-      const h = 5 + rand(i * 3.1) * 13;
+      const archetype = i % 3; // 0 narrow shophouse, 1 wide market front, 2 tall shophouse
+      const landmark = i % 37 === 11;
+      const w = archetype === 1 ? 11 + rand(i * 2.3) * 6 : 6 + rand(i * 2.3) * 4;
+      const d = 7 + rand(i * 5.9) * 6;
+      const h = landmark
+        ? 15 + rand(i * 3.1) * 4
+        : archetype === 1
+          ? 4.5 + rand(i * 3.1) * 1.5
+          : archetype === 2
+            ? 9 + rand(i * 3.1) * 6
+            : 6.5 + rand(i * 3.1) * 3;
       out.push({
         pos: [p.x + r.x * depth, h / 2, p.z + r.z * depth],
         yaw: Math.atan2(f.x, f.z) + (rand(i * 7.7) - 0.5) * 0.35,
-        s: [7 + rand(i * 2.3) * 9, h, 7 + rand(i * 5.9) * 9],
+        s: [w, h, d],
         c: palette[Math.floor(rand(i * 9.1) * palette.length)],
+        roofH: (landmark ? 6.5 : archetype === 1 ? 2.2 : 3.2) + rand(i * 4.4) * 1.2,
+        roofC: roofPalette[Math.floor(rand(i * 5.5) * roofPalette.length)],
+        hasBalcony: !landmark && archetype !== 1,
+        awningC: awningPalette[Math.floor(rand(i * 6.6) * awningPalette.length)],
       });
     }
     return out;
+  }, []);
+
+  // Every building gets a hip roof (a 4-sided cone reads as a pyramid once
+  // rotated 45 deg to align its faces with the box below, scaled non-
+  // uniformly so a rectangular footprint gives a rectangular-based roof).
+  const roofs = useMemo(
+    () =>
+      buildings.map((b) => ({
+        pos: [b.pos[0], b.pos[1] + b.s[1] / 2 + b.roofH / 2, b.pos[2]] as [number, number, number],
+        yaw: b.yaw + Math.PI / 4,
+        s: [b.s[0] / 2 + 0.4, b.roofH, b.s[2] / 2 + 0.4] as [number, number, number],
+        c: b.roofC,
+      })),
+    [buildings],
+  );
+
+  // Ground-floor awning on the building's long face, tilted down slightly.
+  const awnings = useMemo(
+    () =>
+      buildings.map((b) => {
+        const faceD = b.s[2] / 2 + 0.5;
+        return {
+          pos: [
+            b.pos[0] + Math.sin(b.yaw) * faceD,
+            b.pos[1] - b.s[1] / 2 + 2.4,
+            b.pos[2] + Math.cos(b.yaw) * faceD,
+          ] as [number, number, number],
+          yaw: b.yaw,
+          w: b.s[0] * 0.85,
+          c: b.awningC,
+        };
+      }),
+    [buildings],
+  );
+
+  // Second-storey balcony railing, narrow shophouses and tall shophouses only.
+  const balconies = useMemo(
+    () =>
+      buildings
+        .filter((b) => b.hasBalcony)
+        .map((b) => {
+          const faceD = b.s[2] / 2 + 0.15;
+          return {
+            pos: [
+              b.pos[0] + Math.sin(b.yaw) * faceD,
+              b.pos[1] + b.s[1] * 0.12,
+              b.pos[2] + Math.cos(b.yaw) * faceD,
+            ] as [number, number, number],
+            yaw: b.yaw,
+            w: b.s[0] * 0.7,
+          };
+        }),
+    [buildings],
+  );
+
+  // Temple chedis: a handful of tapering spires across the moat from the
+  // road, sparse and non-instanced -- there are only a few, and their
+  // stepped silhouette (plinth/dome/spire) needs distinct geometry per
+  // tier anyway. Placed past the wall so they read as skyline landmarks.
+  const chedis = useMemo(() => {
+    const ts = [0.06, 0.22, 0.47, 0.58, 0.82, 0.93];
+    return ts.map((t, i) => {
+      const p = getPointAt(t, new Vector3());
+      const r = getRightAt(t, new Vector3());
+      return { id: i, pos: [p.x - r.x * 68, 0, p.z - r.z * 68] as [number, number, number] };
+    });
   }, []);
 
   const trees = useMemo(() => {
@@ -258,6 +399,45 @@ export default function City() {
           <Instance key={i} position={b.pos} rotation={[0, b.yaw, 0]} scale={b.s} color={b.c} />
         ))}
       </Instances>
+
+      {/* Hip roofs: a 4-sided cone rotated 45deg reads as a pyramid whose
+          faces align with the box below. */}
+      <Instances limit={roofs.length} range={roofs.length}>
+        <coneGeometry args={[1, 1, 4]} />
+        <meshLambertMaterial />
+        {roofs.map((rf, i) => (
+          <Instance key={i} position={rf.pos} rotation={[0, rf.yaw, 0]} scale={rf.s} color={rf.c} />
+        ))}
+      </Instances>
+
+      {/* Ground-floor shopfront awnings. */}
+      <Instances limit={awnings.length} range={awnings.length}>
+        <boxGeometry args={[1, 0.15, 1.4]} />
+        <meshLambertMaterial />
+        {awnings.map((a, i) => (
+          <Instance
+            key={i}
+            position={a.pos}
+            rotation={[0.5, a.yaw, 0]}
+            scale={[a.w, 1, 1]}
+            color={a.c}
+          />
+        ))}
+      </Instances>
+
+      {/* Second-storey balcony railings. */}
+      <Instances limit={balconies.length} range={balconies.length}>
+        <boxGeometry args={[1, 1.1, 0.12]} />
+        <meshLambertMaterial color="#5c3a2e" />
+        {balconies.map((bc, i) => (
+          <Instance key={i} position={bc.pos} rotation={[0, bc.yaw, 0]} scale={[bc.w, 1, 1]} />
+        ))}
+      </Instances>
+
+      {/* Temple chedis: rare skyline landmarks across the moat. */}
+      {chedis.map((c) => (
+        <Chedi key={c.id} position={c.pos} />
+      ))}
 
       <Instances limit={trees.length} range={trees.length}>
         <sphereGeometry args={[2.6, 6, 5]} />
