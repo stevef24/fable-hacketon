@@ -1,28 +1,43 @@
 # Fidelity tickets
 
-The game plays. It does not yet *look* like `docs/reference/`. These tickets close that gap.
+The game plays and is deployed. These close the remaining gap to `docs/reference/`.
 
-Ordered by impact per hour — if you only do one thing, do the one at the top of your column. Each is also a GitHub issue, assigned to you.
+Each row is also a GitHub issue, assigned to you.
 
-| | Ticket | Owner | Why it matters |
-|---|---|---|---|
-| **F1** | [Gates](F1-gates.md) | @1320group | The most recognisable thing in the game, currently boxes |
-| **F2** | [Lighting & sky](F2-lighting.md) | @1320group | Cheapest large win — changes everything, touches no geometry |
-| **F3** | [Shophouses](F3-shophouses.md) | @1320group | Makes the horizon a city instead of a bar chart |
-| **F4** | [Lanterns & dressing](F4-dressing.md) | @1320group | Fills the empty road between obstacles |
-| **F5** | [Obstacle models](F5-obstacle-models.md) | @keithrbennett | The things players look at most |
-| **F6** | [Course pacing](F6-course-pacing.md) | @keithrbennett | The course has never been played end to end |
-| **F7** | [HUD art pass](F7-hud-art.md) | @vivi09032000 | Currently reads as styled HTML, not as the art |
-| **F8** | [Audio](F8-audio.md) | @vivi09032000 | A must-have, and completely absent |
-| **F9** | [Post-processing](F9-postprocessing.md) | @stevef24 | Highest fidelity-per-hour; independent of everything else |
-| **F10** | [Movement feel](F10-feel.md) | @dungle-scrubs | Fair timer blocks Keith's course tuning |
+## Open
+
+| | Ticket | Owner | Issue | Why it matters |
+|---|---|---|---|---|
+| **F1** | [Gates](F1-gates.md) | @dungle-scrubs | [#8](https://github.com/stevef24/fable-hacketon/issues/8) | The most recognisable thing in the game, still boxes. Also the four checkpoints |
+| **F3** | [Shophouses](F3-shophouses.md) | @dungle-scrubs | [#10](https://github.com/stevef24/fable-hacketon/issues/10) | Makes the horizon a city instead of a bar chart |
+| **F4** | [Lanterns & dressing](F4-dressing.md) | @vivi09032000 | [#11](https://github.com/stevef24/fable-hacketon/issues/11) | Stalls and lanterns are in; poles, banners and signage are not |
+| **F7** | [HUD art pass](F7-hud-art.md) | @vivi09032000 | [#12](https://github.com/stevef24/fable-hacketon/issues/12) | Reads as styled HTML, not as the art |
+| **F11** | Obstacle models | @keithrbennett | [#18](https://github.com/stevef24/fable-hacketon/issues/18) | Most-looked-at objects now the course is dense |
+| **F12** | Delete the course fill | @keithrbennett | [#19](https://github.com/stevef24/fable-hacketon/issues/19) | Generated pacing is a stopgap; yours should replace it |
+| **P3** | [Course pacing](F6-course-pacing.md) | @keithrbennett | [#7](https://github.com/stevef24/fable-hacketon/issues/7) | Never played end to end |
+
+**@1320group never started**, so their city tickets were reassigned to Kevin and vivi, and P1 picked up the crowd and water.
+
+## Done
+
+| Ticket | Who | What landed |
+|---|---|---|
+| F2 · Lighting | P1 | Golden-hour key + cool sky fill, emissive lanterns, warmed palette |
+| F8 · Audio | @vivi09032000 | Full Web Audio synthesis, zero binary assets, persisted mute |
+| F9 · Post-processing | P1 | Bloom, vignette, ACES filmic tone mapping |
+| F10 · Movement feel | @dungle-scrubs | Frame-accurate timer, steering ramp, crash stumble |
+| F13 · Crowd animation | P1 | 520 spectators hopping on individual phases |
+| F14 · Moat water | P1 | Per-vertex ripples, specular highlight that catches bloom |
+| — · Course density | P1 | Gaps capped at 95m (was 754m); 40 obstacles to 89 |
 
 ## Two rules
 
-**Only edit files you own.** The ownership map is in [`../../PLAN.md`](../PLAN.md). Five people in one small repo is a merge problem, not a capacity problem.
+**Only edit files you own.** Ownership map is in [`../../PLAN.md`](../PLAN.md).
 
-**Never call `set()` on the zustand store inside `useFrame`.** Per-frame values live in the mutable `runner` object. This is the fastest way to make the game feel bad.
+**Never call `set()` on the zustand store inside `useFrame`.** Per-frame values live in the mutable `runner` object.
 
-## One trap, already paid for
+## Traps already paid for
 
-Anything dividing by `dt` inside `useFrame` must guard `dt > 0`. `dt` is genuinely 0 on the first frame and whenever a backgrounded tab resumes. A `0/0` reaches a `damp()` and NaN then propagates permanently — it cost us a view model prop that was silently unrenderable with **no console error at all**. See commit 1914556.
+- Anything dividing by `dt` inside `useFrame` must guard `dt > 0`. `dt` is genuinely 0 on the first frame and whenever a backgrounded tab resumes. A `0/0` reaching a `damp()` propagates NaN permanently — it cost us a view model prop that was silently unrenderable with **no console error**. See 1914556.
+- `getRightAt` is `forward × up`, i.e. `(-tz, 0, tx)`. Negating it inverts steering. Covered by `npm test`.
+- Animating a drei `<Instances>` per frame means fighting drei for the matrix buffer. Use a raw `InstancedMesh` — see `src/world/Crowd.tsx`.
