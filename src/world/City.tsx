@@ -163,6 +163,7 @@ export default function City() {
       roofS: [number, number, number];
       awning: [number, number, number] | null;
       awningC: string;
+      balcony: boolean;
     }[] = [];
     const walls = ['#d9b88a', '#c98b5e', '#e0c9a0', '#b5764f', '#d2a978', '#c2a074'];
     const awnings = ['#c8402f', '#e0a032', '#2f6fa8', '#d8d2c4'];
@@ -175,17 +176,28 @@ export default function City() {
       const yaw = Math.atan2(f.x, f.z);
       const back = i % 3 === 2;
       const depth = back ? 40 + rand(i * 1.3) * 30 : 19 + rand(i) * 3;
-      const storeys = 2 + Math.floor(rand(i * 3.1) * 2);
+      // Three archetypes plus a sparse landmark, so a terrace has rhythm
+      // rather than one silhouette at random scales.
+      const arch = i % 3; // 0 narrow shophouse, 1 wide market front, 2 tall
+      const landmark = i % 37 === 11;
+      const storeys = landmark ? 4 : arch === 1 ? 1 : arch === 2 ? 3 : 2;
       const h = storeys * 3.4;
-      const w = back ? 9 + rand(i * 2.3) * 8 : 7.2 + rand(i * 2.3) * 2.4;
+      const w = back
+        ? 9 + rand(i * 2.3) * 8
+        : arch === 1
+          ? 10.5 + rand(i * 2.3) * 3
+          : 6.2 + rand(i * 2.3) * 1.8;
       const d = back ? 9 + rand(i * 5.9) * 8 : 8;
       out.push({
         pos: [p.x + r.x * depth, h / 2, p.z + r.z * depth],
         yaw: yaw + (back ? (rand(i * 7.7) - 0.5) * 0.3 : 0),
         s: [w, h, d],
         c: walls[Math.floor(rand(i * 9.1) * walls.length)],
-        roofY: h + 1.1,
-        roofS: [w * 0.82, 2.2, d * 0.82],
+        roofY: h + (landmark ? 1.9 : 1.1),
+        roofS: [w * 0.82, landmark ? 4.2 : 2.2, d * 0.82],
+        // Balconies read on the tall narrow types; a single-storey market
+        // front with a balcony looks wrong.
+        balcony: !back && arch !== 1,
         // Only the street-facing row gets an awning; nobody sees the back.
         awning: back ? null : [w + 1.4, 0.22, 2.2],
         awningC: awnings[Math.floor(rand(i * 4.7) * awnings.length)],
@@ -426,6 +438,22 @@ export default function City() {
               rotation={[0, b.yaw, 0.12]}
               scale={b.awning}
               color={b.awningC}
+            />
+          ) : null,
+        )}
+      </Instances>
+
+      {/* balconies on the narrow and tall shophouse types */}
+      <Instances limit={shophouses.length} range={shophouses.length}>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshLambertMaterial color="#7a5636" />
+        {shophouses.map((b, i) =>
+          b.balcony ? (
+            <Instance
+              key={i}
+              position={[b.pos[0], b.s[1] * 0.58, b.pos[2]]}
+              rotation={[0, b.yaw, 0]}
+              scale={[b.s[0] + 0.5, 0.45, b.s[2] + 0.5]}
             />
           ) : null,
         )}

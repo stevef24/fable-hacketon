@@ -29,6 +29,7 @@ import {
 } from 'three';
 import { BASE_SPEED, MAX_SPEED, MIN_SPEED, STEER_SPEED, clamp } from '../game/contract';
 import { runner } from '../game/runner';
+import { spray } from '../game/spray';
 import { useGameStore } from '../game/store';
 
 /** Head-bob rate at BASE_SPEED. Scales with current speed below. */
@@ -252,6 +253,8 @@ export function useViewModel() {
     const running = phase === 'running';
     const frac = speedFraction(runner.speed);
     const { rig, muzzle, droplets } = propRigRef.current!;
+    // Publish the trigger so the obstacle hit test can use the jet.
+    spray.active = running && isSpraying.current;
 
     // Don't leave the gun mid-spray, or droplets hanging in the air, across
     // a phase change (e.g. tabbing away mid-spray or finishing a run).

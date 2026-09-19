@@ -8,6 +8,7 @@ import {
 } from 'three';
 import { ROAD_HALF_WIDTH, TRACK_LENGTH, clamp, type ObstacleKind } from '../game/contract';
 import { runner } from '../game/runner';
+import { SOAK_RANGE, SOAK_WIDTH, spray } from '../game/spray';
 import { useGameStore } from '../game/store';
 import { emitEffect, playForKind } from '../ui/audio';
 import { getPointAt, getRightAt, getTangentAt } from '../game/track';
@@ -250,6 +251,28 @@ export function Obstacles() {
           const gap = L.dist - runner.distance;
           if (gap > -FX_BEHIND && gap < FX_AHEAD && fxCount < FX_CAPACITY - DROPS_PER_KID) {
             fxCount = emitFx(fx.current, fxCount, L, i, g, now / 1000);
+          }
+        }
+
+        // Water gun. Soaking someone ahead makes them back off before they
+        // ever reach you -- so the jet is worth aiming, not just holding.
+        // Motorbikes are traffic and dogs are the one thing you WANT to hit,
+        // so neither can be washed away.
+        if (
+          spray.active &&
+          !hit.current.has(spec.id) &&
+          spec.kind !== 'motorbike' &&
+          spec.kind !== 'dog'
+        ) {
+          const ahead = L.dist - runner.distance;
+          if (ahead > 0 && ahead < SOAK_RANGE && Math.abs(L.laneX - runner.lateral) < SOAK_WIDTH) {
+            hit.current.add(spec.id);
+            L.hitAt = now;
+            L.side = L.laneX >= runner.lateral ? 1 : -1;
+            const store = useGameStore.getState();
+            store.bumpStat('wetZones');
+            store.showFlash('Soaked! They back off', true);
+            continue;
           }
         }
 

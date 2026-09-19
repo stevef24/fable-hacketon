@@ -28,13 +28,17 @@ import { BASE_SPEED, TRACK_LENGTH, type ObstacleSpec } from '../game/contract';
 /**
  * Opening stretch that stays empty so players learn to steer, in METRES.
  *
+ * Kept short on purpose. A runner covers 16m every second, so even 45m is
+ * under three seconds of empty road -- enough to register that A and D
+ * steer, and not so much that the game looks empty before it starts.
+ *
  * This was a lap fraction (0.08), which was right for the 1200m track it was
  * written against -- 96m, about six seconds. On the real 6400m moat the same
  * fraction became 512m, so the first obstacle sat 38 seconds into the run and
  * the game looked empty. A learning zone is a fixed span of road, not a
  * proportion of the lap, so it is absolute now.
  */
-export const CLEAR_ZONE_M = 110;
+export const CLEAR_ZONE_M = 45;
 
 /** Metres along the lap. */
 // Expressed as fractions of the lap so they survive TRACK_LENGTH changing.
@@ -105,15 +109,20 @@ const stretch = (
 const A2 = ANCHORS;
 
 // ═══ LEG 1 · Tha Phae → Chiang Mai Gate ═══════════════════════════════════
-// Teach, then tempt. Nothing before CLEAR_ZONE_M. The first obstacles sit on
-// the outer lanes and are free to ignore, so a new player learns that lanes
-// matter before anything punishes them for not knowing.
-stretch('splash', 170, 430, 3, [0.8, -0.75, 0.7]);
-put('motorbike', 520, -0.55);
-put('dog', 610, 0.35); // first boost, onto open road
-stretch('massage', 760, 1040, 5, [0.7, -0.65, 0.75, -0.7, 0.65]); // Lanna massage strip
-stretch('motorbike', 1120, 1330, 3, [0.35, -0.4, 0.2], true); // traffic out of the sois
-stretch('food', 1400, 1560, 4, [-0.5, 0.45, -0.25, 0.5]); // market into the gate
+// Teach, then tempt. The first obstacle lands about four seconds in -- soon
+// enough that the road never looks empty, and on an outer lane so it is free
+// to ignore. A new player learns that lanes matter before anything punishes
+// them for not knowing.
+put('splash', 65, 0.8); // Songkran kid by the gate crowd: unmissable, harmless
+put('massage', 130, -0.75); // first local calling you over, still wide
+put('splash', 205, 0.7);
+put('motorbike', 290, -0.5); // first bike: a real dodge, generous spacing
+put('food', 380, 0.65);
+put('dog', 470, 0.35); // first boost, onto open road
+stretch('massage', 620, 900, 5, [0.7, -0.65, 0.75, -0.7, 0.6]); // Lanna massage strip
+stretch('splash', 700, 860, 3, [-0.2, 0.3, -0.35]);
+stretch('motorbike', 980, 1240, 4, [0.35, -0.4, 0.2, -0.3], true); // traffic out of the sois
+stretch('food', 1330, 1560, 5, [-0.5, 0.45, -0.25, 0.5, -0.15]); // market into the gate
 
 // ═══ LEG 2 · Chiang Mai → Suan Dok ════════════════════════════════════════
 // Songkran. Water everywhere, traffic threading through it. Lanes tighten.
