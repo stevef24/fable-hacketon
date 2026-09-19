@@ -43,6 +43,14 @@ const FOV_MIN = 75;
 const FOV_MAX = 88;
 const FOV_RESPONSE = 4; // damp() rate, higher = snappier
 
+// A motorbike hit snaps runner.distance back to the last gate (effects.ts,
+// P3) with no other feedback, which reads as a warp/glitch rather than a
+// crash. This punches the FOV out and pitches the prop rig down for a
+// beat as an impact cue -- it does not touch the teleport itself.
+const STUMBLE_DURATION_S = 0.35;
+const STUMBLE_FOV_KICK = 6;
+const STUMBLE_PITCH_RAD = 0.3;
+
 /** Rest pose for the prop rig: low-right of frame, out of the way. */
 const REST_X = 0.32;
 const REST_Y = -0.38;
@@ -96,6 +104,8 @@ export function useViewModel() {
   if (propRigRef.current === null) propRigRef.current = buildPropRig();
   const bobPhase = useRef(0);
   const prevLateral = useRef(runner.lateral);
+  const seenHitIds = useRef<Set<string>>(new Set());
+  const stumbleT = useRef(0);
 
   useEffect(() => {
     const rig = propRigRef.current!;
@@ -121,6 +131,11 @@ export function useViewModel() {
       // diff against the previous run's stale ending lateral position and
       // throw a one-frame lean spike.
       prevLateral.current = 0;
+      // Obstacle ids are static across runs (course.ts), so without this a
+      // motorbike only ever stumbles the view once per session, not once
+      // per run.
+      seenHitIds.current.clear();
+      stumbleT.current = 0;
     }
   }, [phase]);
 
@@ -132,6 +147,17 @@ export function useViewModel() {
     const running = phase === 'running';
     const frac = speedFraction(runner.speed);
     const rig = propRigRef.current!;
+
+    if (running) {
+      for (const m of runner.modifiers) {
+        if (m.kind === 'motorbike' && !seenHitIds.current.has(m.id)) {
+          seenHitIds.current.add(m.id);
+          stumbleT.current = STUMBLE_DURATION_S;
+        }
+      }
+    }
+    stumbleT.current = Math.max(0, stumbleT.current - dt);
+    const stumble = stumbleT.current / STUMBLE_DURATION_S;
 
     if (running) {
       const hz = BOB_HZ_AT_BASE_SPEED * clamp(runner.speed / BASE_SPEED, 0.5, 1.8);
@@ -147,9 +173,10 @@ export function useViewModel() {
     prevLateral.current = runner.lateral;
     const leanTarget = clamp(-lateralVelocity / STEER_SPEED, -1, 1) * LEAN_MAX_RAD;
     rig.rotation.z = MathUtils.damp(rig.rotation.z, -0.15 + leanTarget, LEAN_RESPONSE, dt);
+    rig.rotation.x = stumble * STUMBLE_PITCH_RAD;
 
     const persp = frameCamera as PerspectiveCamera;
-    const fovTarget = running ? FOV_MIN + (FOV_MAX - FOV_MIN) * frac : FOV_MIN;
+    const fovTarget = (running ? FOV_MIN + (FOV_MAX - FOV_MIN) * frac : FOV_MIN) + stumble * STUMBLE_FOV_KICK;
     persp.fov = MathUtils.damp(persp.fov, fovTarget, FOV_RESPONSE, dt);
     persp.updateProjectionMatrix();
   });

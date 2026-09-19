@@ -3,7 +3,14 @@
 import { create } from 'zustand';
 import { emptyStats, type RunStats } from './contract';
 
-const BEST_KEY = 'moatrunner.best';
+// v2: F10 (P2) changed finish() to report a dt-accumulated sim clock
+// instead of wall-clock time. A value saved under the old key was measured
+// under different semantics (stutters and backgrounded tabs inflated it
+// beyond true run time), so it is not comparable to a post-F10 run -- an
+// old best could either block a genuinely faster run or lose to a run
+// that only looks faster because of how it was measured. Versioning the
+// key drops stale values instead of silently comparing across them.
+const BEST_KEY = 'moatrunner.best.v2';
 
 export type Phase = 'menu' | 'running' | 'finished';
 
