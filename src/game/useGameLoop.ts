@@ -7,6 +7,7 @@ import {
 } from './contract';
 import { runner, resetRunner } from './runner';
 import { useGameStore } from './store';
+import { useViewModel } from '../entities/ViewModel';
 
 const keys = new Set<string>();
 
@@ -36,6 +37,7 @@ export function useGameLoop() {
   const hudAt = useRef(0);
   const burstFrom = useRef(0);
   useKeyboard();
+  useViewModel();
 
   useEffect(() => {
     if (phase === 'running') {
