@@ -2,7 +2,7 @@
 
 > **First-person time trial around the Chiang Mai old city.** Start at Tha Phae Gate, run one lap of the moat as fast as you can, while Chiang Mai does its best to slow you down — motorbikes, a soi dog, a massage lady, a food vendor. Fastest lap wins.
 >
-> **Play it:** https://fable-hacketon.vercel.app
+> **Play it:** https://moatrunner.vercel.app
 
 Built at a hackathon by five people in an afternoon.
 
