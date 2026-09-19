@@ -187,15 +187,27 @@ export default function City() {
     return out;
   }, []);
 
-  const gates = useMemo(
-    () =>
-      [{ id: 'start', name: 'Tha Phae Gate', t: 0 }, ...GATES.slice(0, 3)].map((g) => {
-        const p = getPointAt(g.t, new Vector3());
-        const f = getTangentAt(g.t, new Vector3());
-        return { id: g.id, pos: [p.x, 0, p.z] as [number, number, number], yaw: Math.atan2(f.x, f.z) };
-      }),
-    [],
-  );
+  const gates = useMemo(() => {
+    // Tha Phae is both start and finish, so it is drawn at t=0 and the other
+    // three at their checkpoint positions.
+    const thai: Record<string, string> = {
+      'Tha Phae Gate': 'ประตูท่าแพ',
+      'Chiang Mai Gate': 'ประตูเชียงใหม่',
+      'Suan Dok Gate': 'ประตูสวนดอก',
+      'Chang Phuak Gate': 'ประตูช้างเผือก',
+    };
+    return [{ id: 'start', name: 'Tha Phae Gate', t: 0 }, ...GATES.slice(0, 3)].map((g) => {
+      const p = getPointAt(g.t, new Vector3());
+      const f = getTangentAt(g.t, new Vector3());
+      return {
+        id: g.id,
+        name: g.name,
+        thai: thai[g.name] ?? 'ประตู',
+        pos: [p.x, 0, p.z] as [number, number, number],
+        yaw: Math.atan2(f.x, f.z),
+      };
+    });
+  }, []);
 
   return (
     <>
@@ -297,7 +309,7 @@ export default function City() {
 
       {gates.map((g) => (
         <group key={g.id} position={g.pos} rotation={[0, g.yaw, 0]}>
-          <Gate />
+          <Gate thai={g.thai} roman={g.name} />
         </group>
       ))}
     </>

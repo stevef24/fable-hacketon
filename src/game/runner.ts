@@ -48,3 +48,9 @@ export function resetRunner() {
   runner.heldMs = 0;
   runner.heldBy = '';
 }
+
+// Dev affordance: jumping to a point on the lap beats running to it.
+//   __runner.distance = 1550   // just before Chiang Mai Gate
+if (import.meta.env.DEV) {
+  (window as unknown as { __runner: Runner }).__runner = runner;
+}
