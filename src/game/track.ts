@@ -1,24 +1,38 @@
-// OWNER: P2 (Kevin). PLACEHOLDER by P1 — a rounded rectangle standing in for
-// the old city moat. Replace with the real loop; keep the signatures.
+// OWNER: P2 (Kevin). The loop around the Chiang Mai moat.
 import { CatmullRomCurve3, Vector3 } from 'three';
+import { TRACK_LENGTH } from './contract';
 
-const HALF_X = 150; // the moat is roughly 300m x 260m
-const HALF_Z = 130;
-const C = 40; // corner inset
+// The real old city is roughly a 1.6km square. We build it at that shape,
+// then scale the whole thing so one lap is exactly TRACK_LENGTH metres --
+// that keeps `distance / TRACK_LENGTH` a true 0..1 position on the curve,
+// which is what the gates and every obstacle placement rely on.
+const HALF = 800;
+const CORNER = 190; // how far back from each corner the bend starts
 
-const points = [
-  new Vector3(-HALF_X + C, 0, -HALF_Z),
-  new Vector3(HALF_X - C, 0, -HALF_Z),
-  new Vector3(HALF_X, 0, -HALF_Z + C),
-  new Vector3(HALF_X, 0, HALF_Z - C),
-  new Vector3(HALF_X - C, 0, HALF_Z),
-  new Vector3(-HALF_X + C, 0, HALF_Z),
-  new Vector3(-HALF_X, 0, HALF_Z - C),
-  new Vector3(-HALF_X, 0, -HALF_Z + C),
+const shape = [
+  new Vector3(-HALF + CORNER, 0, -HALF),
+  new Vector3(HALF - CORNER, 0, -HALF),
+  new Vector3(HALF, 0, -HALF + CORNER),
+  new Vector3(HALF, 0, HALF - CORNER),
+  new Vector3(HALF - CORNER, 0, HALF),
+  new Vector3(-HALF + CORNER, 0, HALF),
+  new Vector3(-HALF, 0, HALF - CORNER),
+  new Vector3(-HALF, 0, -HALF + CORNER),
 ];
 
+const draft = new CatmullRomCurve3(shape, true, 'catmullrom', 0.2);
+const scale = TRACK_LENGTH / draft.getLength();
+
 /** Built once at module scope. Never rebuild this per frame. */
-export const curve = new CatmullRomCurve3(points, true, 'catmullrom', 0.3);
+export const curve = new CatmullRomCurve3(
+  shape.map((p) => p.clone().multiplyScalar(scale)),
+  true,
+  'catmullrom',
+  0.2,
+);
+
+/** Actual arc length, within a metre or so of TRACK_LENGTH. */
+export const trackLength = curve.getLength();
 
 const wrap = (t: number) => ((t % 1) + 1) % 1;
 
@@ -30,8 +44,13 @@ export function getTangentAt(t: number, target = new Vector3()): Vector3 {
   return curve.getTangentAt(wrap(t), target);
 }
 
-/** Unit vector pointing across the road, to the runner's right. */
+/**
+ * Unit vector pointing across the road, to the runner's right.
+ * Three.js is right-handed with +Y up, so right = forward x up, which for a
+ * flat tangent (tx, 0, tz) is (-tz, 0, tx). Getting this sign backwards
+ * inverts steering; see tests/steer.test.mjs.
+ */
 export function getRightAt(t: number, target = new Vector3()): Vector3 {
   getTangentAt(t, target);
-  return target.set(target.z, 0, -target.x).normalize();
+  return target.set(-target.z, 0, target.x).normalize();
 }

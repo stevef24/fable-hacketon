@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "esbuild src/game/track.ts --bundle --format=esm --outfile=.tmp-test/track.js --external:three --log-level=error && node tests/steer.test.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.8",
@@ -23,6 +24,7 @@
     "@types/react-dom": "^19.2.7",
     "@types/three": "^0.186.0",
     "@vitejs/plugin-react": "^6.1.1",
+    "esbuild": "^0.28.2",
     "oxlint": "^1.81.0",
     "typescript": "~6.0.2",
     "vite": "^8.3.0"
