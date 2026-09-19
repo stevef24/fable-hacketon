@@ -149,22 +149,59 @@ export default function City() {
     return out;
   }, []);
 
-  const buildings = useMemo(() => {
-    const out: { pos: [number, number, number]; yaw: number; s: [number, number, number]; c: string }[] = [];
-    const palette = ['#c98b5e', '#b5764f', '#d9a978', '#a86b47', '#c2a074', '#8f5f3f'];
-    for (let i = 0; i < 300; i++) {
-      const t = i / 300;
+  // Shophouses, per docs/reference/18-shophouses.png: a terrace pressed up
+  // against the street with pitched roofs and awnings, not scattered boxes.
+  // Front row hugs the road so the street reads as enclosed; a sparser back
+  // row gives the skyline depth.
+  const shophouses = useMemo(() => {
+    const out: {
+      pos: [number, number, number];
+      yaw: number;
+      s: [number, number, number];
+      c: string;
+      roofY: number;
+      roofS: [number, number, number];
+      awning: [number, number, number] | null;
+      awningC: string;
+    }[] = [];
+    const walls = ['#d9b88a', '#c98b5e', '#e0c9a0', '#b5764f', '#d2a978', '#c2a074'];
+    const awnings = ['#c8402f', '#e0a032', '#2f6fa8', '#d8d2c4'];
+    const COUNT = 440;
+    for (let i = 0; i < COUNT; i++) {
+      const t = i / COUNT;
       const p = getPointAt(t, new Vector3());
       const r = getRightAt(t, new Vector3());
       const f = getTangentAt(t, new Vector3());
-      const depth = 20 + rand(i) * 55;
-      const h = 5 + rand(i * 3.1) * 13;
+      const yaw = Math.atan2(f.x, f.z);
+      const back = i % 3 === 2;
+      const depth = back ? 40 + rand(i * 1.3) * 30 : 19 + rand(i) * 3;
+      const storeys = 2 + Math.floor(rand(i * 3.1) * 2);
+      const h = storeys * 3.4;
+      const w = back ? 9 + rand(i * 2.3) * 8 : 7.2 + rand(i * 2.3) * 2.4;
+      const d = back ? 9 + rand(i * 5.9) * 8 : 8;
       out.push({
         pos: [p.x + r.x * depth, h / 2, p.z + r.z * depth],
-        yaw: Math.atan2(f.x, f.z) + (rand(i * 7.7) - 0.5) * 0.35,
-        s: [7 + rand(i * 2.3) * 9, h, 7 + rand(i * 5.9) * 9],
-        c: palette[Math.floor(rand(i * 9.1) * palette.length)],
+        yaw: yaw + (back ? (rand(i * 7.7) - 0.5) * 0.3 : 0),
+        s: [w, h, d],
+        c: walls[Math.floor(rand(i * 9.1) * walls.length)],
+        roofY: h + 1.1,
+        roofS: [w * 0.82, 2.2, d * 0.82],
+        // Only the street-facing row gets an awning; nobody sees the back.
+        awning: back ? null : [w + 1.4, 0.22, 2.2],
+        awningC: awnings[Math.floor(rand(i * 4.7) * awnings.length)],
       });
+    }
+    return out;
+  }, []);
+
+  // ── #11: lamp posts down the city side, per 22-street-props.png ────────
+  const lampPosts = useMemo(() => {
+    const out: { pos: [number, number, number] }[] = [];
+    for (let i = 0; i < 150; i++) {
+      const t = i / 150 + 0.0025;
+      const p = getPointAt(t, new Vector3());
+      const r = getRightAt(t, new Vector3());
+      out.push({ pos: [p.x + r.x * 10.5, 0, p.z + r.z * 10.5] });
     }
     return out;
   }, []);
@@ -355,11 +392,64 @@ export default function City() {
         </group>
       ))}
 
-      <Instances limit={buildings.length} range={buildings.length}>
+      {/* shophouse walls */}
+      <Instances limit={shophouses.length} range={shophouses.length}>
         <boxGeometry args={[1, 1, 1]} />
         <meshLambertMaterial />
-        {buildings.map((b, i) => (
+        {shophouses.map((b, i) => (
           <Instance key={i} position={b.pos} rotation={[0, b.yaw, 0]} scale={b.s} color={b.c} />
+        ))}
+      </Instances>
+      {/* pitched terracotta roofs -- a 4-sided cone is a pyramid, rotated
+          45deg so its ridges line up with the walls below */}
+      <Instances limit={shophouses.length} range={shophouses.length}>
+        <coneGeometry args={[0.72, 1, 4]} />
+        <meshLambertMaterial color="#9d4b2f" />
+        {shophouses.map((b, i) => (
+          <Instance
+            key={i}
+            position={[b.pos[0], b.roofY, b.pos[2]]}
+            rotation={[0, b.yaw + Math.PI / 4, 0]}
+            scale={b.roofS}
+          />
+        ))}
+      </Instances>
+      {/* shopfront awnings */}
+      <Instances limit={shophouses.length} range={shophouses.length}>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshLambertMaterial />
+        {shophouses.map((b, i) =>
+          b.awning ? (
+            <Instance
+              key={i}
+              position={[b.pos[0], 3.3, b.pos[2]]}
+              rotation={[0, b.yaw, 0.12]}
+              scale={b.awning}
+              color={b.awningC}
+            />
+          ) : null,
+        )}
+      </Instances>
+
+      {/* lamp posts: column */}
+      <Instances limit={lampPosts.length} range={lampPosts.length}>
+        <boxGeometry args={[0.22, 5.2, 0.22]} />
+        <meshLambertMaterial color="#2f2a24" />
+        {lampPosts.map((l, i) => (
+          <Instance key={i} position={[l.pos[0], 2.6, l.pos[2]]} />
+        ))}
+      </Instances>
+      {/* lamp posts: lit head, emissive so the bloom pass catches it */}
+      <Instances limit={lampPosts.length} range={lampPosts.length}>
+        <boxGeometry args={[0.62, 0.8, 0.62]} />
+        <meshStandardMaterial
+          color="#ffb257"
+          emissive="#ffa23c"
+          emissiveIntensity={3.2}
+          toneMapped={false}
+        />
+        {lampPosts.map((l, i) => (
+          <Instance key={i} position={[l.pos[0], 5.5, l.pos[2]]} />
         ))}
       </Instances>
 
