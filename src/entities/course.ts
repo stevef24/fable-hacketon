@@ -166,7 +166,16 @@ const authored: CourseEntry[] = ROWS.map(([kind, metres, lane, rides]) => {
 // Keith: this is a stopgap for the demo, not a replacement for issue #7.
 // Hand-authored pacing beats generated pacing every time; delete this the
 // moment your retuned ROWS cover the lap.
-const MAX_GAP = 58; // metres of clear road before we fill -- ~3.6s at base speed
+// Difficulty ramps across the lap: obstacles crowd in as you approach the
+// finish. Early legs breathe at ~72m between fills; the run home is ~34m,
+// roughly half the recovery time. Progress is measured from the clear zone
+// so leg one is genuinely a warm-up.
+const GAP_START = 72;
+const GAP_END = 34;
+const gapAt = (metres: number) => {
+  const p = Math.min(1, Math.max(0, (metres - CLEAR_ZONE_M) / (TRACK_LENGTH - CLEAR_ZONE_M)));
+  return GAP_START + (GAP_END - GAP_START) * p;
+};
 const FILL_KINDS: ObstacleSpec['kind'][] = [
   'motorbike', 'splash', 'food', 'massage', 'motorbike', 'splash', 'massage', 'dog',
 ];
@@ -183,19 +192,19 @@ function fill(list: CourseEntry[]): CourseEntry[] {
   let cursor = startM;
 
   const push = (from: number, to: number) => {
+    const gap = gapAt(from);
     const span = to - from;
-    if (span <= MAX_GAP) return;
-    const count = Math.floor(span / MAX_GAP);
+    if (span <= gap) return;
+    const count = Math.floor(span / gap);
     const step = span / (count + 1);
     for (let i = 1; i <= count; i++) {
       const metres = from + step * i;
       const kind = FILL_KINDS[n % FILL_KINDS.length];
-      out.push({
-        id: `fill-${n}`,
-        kind,
-        t: metres / TRACK_LENGTH,
-        lane: FILL_LANES[n % FILL_LANES.length],
-      });
+      // Lanes tighten toward the centreline late on, so the last leg cannot
+      // be run on autopilot down one edge.
+      const p = Math.min(1, Math.max(0, (metres - CLEAR_ZONE_M) / (TRACK_LENGTH - CLEAR_ZONE_M)));
+      const lane = FILL_LANES[n % FILL_LANES.length] * (1 - 0.55 * p);
+      out.push({ id: `fill-${n}`, kind, t: metres / TRACK_LENGTH, lane });
       n++;
     }
   };

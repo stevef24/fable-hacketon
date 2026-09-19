@@ -35,9 +35,14 @@ export function isHit(dist: number, laneX: number) {
 }
 
 export const EFFECTS: Record<ObstacleKind, Effect> = {
+  // Was a full reset to the last gate, which could erase 90 seconds and felt
+  // like a punishment for existing. A rider clipping you should stagger you,
+  // not delete your run: you get knocked back a few metres and lose your
+  // footing for a beat. Still the harshest hit, still recoverable.
   motorbike: {
-    multiplier: 0.5, durationMs: 900, resetToGate: true, holdMs: 1400,
-    label: 'Crash!', line: 'Back to the last gate...', good: false, stat: 'motorbikeHits',
+    multiplier: 0.42, durationMs: 1400, distance: -22, holdMs: 1200,
+    label: 'Motorbike!', line: 'Watch out! \u0e23\u0e30\u0e27\u0e31\u0e07!',
+    good: false, stat: 'motorbikeHits',
   },
   // The signature obstacle. Five full seconds of being talked at is the
   // single most expensive thing that can happen to a runner, and the funniest.
