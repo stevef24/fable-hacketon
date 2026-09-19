@@ -1,10 +1,12 @@
 // OWNER: P4 (1320group). The old city: road, moat, walls, buildings, gates.
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { Instance, Instances } from '@react-three/drei';
-import { BufferAttribute, BufferGeometry, Vector3 } from 'three';
+import { useFrame } from '@react-three/fiber';
+import { BufferAttribute, BufferGeometry, Vector3, type Mesh } from 'three';
 import { GATES } from '../game/contract';
 import { getPointAt, getRightAt, getTangentAt } from '../game/track';
 import Gate from './Gate';
+import Crowd from './Crowd';
 
 const SAMPLES = 420;
 
@@ -52,6 +54,30 @@ export default function City() {
   const verge = useMemo(() => ribbon(13, -0.05, 0), []);
   // Inside the road, above the ground plane -- at y=-0.6 the ground occluded it.
   const moat = useMemo(() => ribbon(11, -0.12, -30), []);
+  // Cache the flat y values so the ripple is a pure offset, never cumulative.
+  const moatRest = useMemo(
+    () => Float32Array.from((moat.getAttribute('position') as BufferAttribute).array),
+    [moat],
+  );
+  const moatRef = useRef<Mesh>(null);
+
+  useFrame(({ clock }) => {
+    const mesh = moatRef.current;
+    if (!mesh) return;
+    const attr = mesh.geometry.getAttribute('position') as BufferAttribute;
+    const arr = attr.array as Float32Array;
+    const t = clock.elapsedTime;
+    for (let i = 0; i < arr.length; i += 3) {
+      const x = moatRest[i];
+      const z = moatRest[i + 2];
+      arr[i + 1] =
+        moatRest[i + 1] +
+        Math.sin(x * 0.09 + t * 1.6) * 0.16 +
+        Math.cos(z * 0.11 - t * 1.15) * 0.12;
+    }
+    attr.needsUpdate = true;
+    mesh.geometry.computeVertexNormals();
+  });
 
   const walls = useMemo(() => {
     const out: { pos: [number, number, number]; yaw: number; h: number }[] = [];
@@ -150,6 +176,17 @@ export default function City() {
     return out;
   }, []);
 
+  const roadDashes = useMemo(() => {
+    const out: { pos: [number, number, number]; yaw: number }[] = [];
+    for (let i = 0; i < 640; i++) {
+      const t = i / 640;
+      const p = getPointAt(t, new Vector3());
+      const f = getTangentAt(t, new Vector3());
+      out.push({ pos: [p.x, 0.03, p.z], yaw: Math.atan2(f.x, f.z) });
+    }
+    return out;
+  }, []);
+
   const gates = useMemo(
     () =>
       [{ id: 'start', name: 'Tha Phae Gate', t: 0 }, ...GATES.slice(0, 3)].map((g) => {
@@ -182,8 +219,16 @@ export default function City() {
       <mesh geometry={road}>
         <meshLambertMaterial color="#d8c49c" />
       </mesh>
-      <mesh geometry={moat}>
-        <meshLambertMaterial color="#49b9d6" />
+      <mesh geometry={moat} ref={moatRef}>
+        {/* Standard, not Lambert: the specular highlight is what makes the
+            ripples read as water once bloom catches it. */}
+        <meshStandardMaterial
+          color="#2e9fc4"
+          roughness={0.18}
+          metalness={0.34}
+          emissive="#0a3d55"
+          emissiveIntensity={0.28}
+        />
       </mesh>
 
       <Instances limit={walls.length} range={walls.length}>
@@ -210,22 +255,16 @@ export default function City() {
         ))}
       </Instances>
 
-      {/* crowd: bodies */}
-      <Instances limit={crowd.length} range={crowd.length}>
-        <boxGeometry args={[0.5, 1.1, 0.35]} />
-        <meshLambertMaterial />
-        {crowd.map((c, i) => (
-          <Instance key={i} position={[c.pos[0], 0.55 * c.h + 0.1, c.pos[2]]} scale={[1, c.h, 1]} color={c.c} />
+      <Instances limit={roadDashes.length} range={roadDashes.length}>
+        <boxGeometry args={[0.32, 0.02, 3.4]} />
+        <meshLambertMaterial color="#efe3c4" />
+        {roadDashes.map((d, i) => (
+          <Instance key={i} position={d.pos} rotation={[0, d.yaw, 0]} />
         ))}
       </Instances>
-      {/* crowd: heads */}
-      <Instances limit={crowd.length} range={crowd.length}>
-        <boxGeometry args={[0.34, 0.34, 0.3]} />
-        <meshLambertMaterial color="#d9a06a" />
-        {crowd.map((c, i) => (
-          <Instance key={i} position={[c.pos[0], 1.15 * c.h + 0.1, c.pos[2]]} />
-        ))}
-      </Instances>
+
+      <Crowd people={crowd} />
+
       {/* market stall canopies */}
       <Instances limit={stalls.length} range={stalls.length}>
         <boxGeometry args={[3.4, 0.18, 2.4]} />
