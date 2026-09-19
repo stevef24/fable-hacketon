@@ -149,23 +149,6 @@ export default function City() {
     return out;
   }, []);
 
-  // A gate tower pair fills every wall gap -- the wall's own entrances,
-  // distinct from the road-level Gate the runner passes under.
-  const wallGates = useMemo(
-    () =>
-      GATE_TS.map((t) => {
-        const p = getPointAt(t, new Vector3());
-        const r = getRightAt(t, new Vector3());
-        const f = getTangentAt(t, new Vector3());
-        return {
-          id: `wall-${t}`,
-          pos: [p.x - r.x * 46, 0, p.z - r.z * 46] as [number, number, number],
-          yaw: Math.atan2(f.x, f.z),
-        };
-      }),
-    [],
-  );
-
   const buildings = useMemo(() => {
     const out: { pos: [number, number, number]; yaw: number; s: [number, number, number]; c: string }[] = [];
     const palette = ['#c98b5e', '#b5764f', '#d9a978', '#a86b47', '#c2a074', '#8f5f3f'];
@@ -258,27 +241,52 @@ export default function City() {
     return out;
   }, []);
 
-  const gates = useMemo(() => {
-    // Tha Phae is both start and finish, so it is drawn at t=0 and the other
-    // three at their checkpoint positions.
+  // Tha Phae is both start and finish, so it is drawn at t=0 and the other
+  // three at their checkpoint positions. Shared between the road-level Gate
+  // (offset 0, the one the runner passes under) and the wall's own gate at
+  // the same t, 46m out -- one landmark, two placements.
+  const gateInfo = useMemo(() => {
     const thai: Record<string, string> = {
       'Tha Phae Gate': 'ประตูท่าแพ',
       'Chiang Mai Gate': 'ประตูเชียงใหม่',
       'Suan Dok Gate': 'ประตูสวนดอก',
       'Chang Phuak Gate': 'ประตูช้างเผือก',
     };
-    return [{ id: 'start', name: 'Tha Phae Gate', t: 0 }, ...GATES.slice(0, 3)].map((g) => {
-      const p = getPointAt(g.t, new Vector3());
-      const f = getTangentAt(g.t, new Vector3());
-      return {
-        id: g.id,
-        name: g.name,
-        thai: thai[g.name] ?? 'ประตู',
-        pos: [p.x, 0, p.z] as [number, number, number],
-        yaw: Math.atan2(f.x, f.z),
-      };
-    });
+    return [{ id: 'start', name: 'Tha Phae Gate', t: 0 }, ...GATES.slice(0, 3)].map((g) => ({
+      id: g.id,
+      name: g.name,
+      thai: thai[g.name] ?? 'ประตู',
+      t: g.t,
+    }));
   }, []);
+
+  const gates = useMemo(
+    () =>
+      gateInfo.map((g) => {
+        const p = getPointAt(g.t, new Vector3());
+        const f = getTangentAt(g.t, new Vector3());
+        return { ...g, pos: [p.x, 0, p.z] as [number, number, number], yaw: Math.atan2(f.x, f.z) };
+      }),
+    [gateInfo],
+  );
+
+  // A gate tower pair fills every wall gap -- the wall's own entrances,
+  // distinct from the road-level Gate above.
+  const wallGates = useMemo(
+    () =>
+      gateInfo.map((g) => {
+        const p = getPointAt(g.t, new Vector3());
+        const r = getRightAt(g.t, new Vector3());
+        const f = getTangentAt(g.t, new Vector3());
+        return {
+          ...g,
+          id: `wall-${g.id}`,
+          pos: [p.x - r.x * 46, 0, p.z - r.z * 46] as [number, number, number],
+          yaw: Math.atan2(f.x, f.z),
+        };
+      }),
+    [gateInfo],
+  );
 
   return (
     <>
@@ -343,7 +351,7 @@ export default function City() {
       {/* The wall's own entrances -- a gate tower pair fills each gap. */}
       {wallGates.map((g) => (
         <group key={g.id} position={g.pos} rotation={[0, g.yaw, 0]}>
-          <Gate />
+          <Gate thai={g.thai} roman={g.name} />
         </group>
       ))}
 
