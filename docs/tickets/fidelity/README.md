@@ -2,7 +2,7 @@
 
 The game plays. It does not yet *look* like `docs/reference/`. These tickets close that gap.
 
-Ordered by impact per hour — if you only do one thing, do the one at the top of your column.
+Ordered by impact per hour — if you only do one thing, do the one at the top of your column. Each is also a GitHub issue, assigned to you.
 
 | | Ticket | Owner | Why it matters |
 |---|---|---|---|
@@ -14,7 +14,8 @@ Ordered by impact per hour — if you only do one thing, do the one at the top o
 | **F6** | [Course pacing](F6-course-pacing.md) | @keithrbennett | The course has never been played end to end |
 | **F7** | [HUD art pass](F7-hud-art.md) | @vivi09032000 | Currently reads as styled HTML, not as the art |
 | **F8** | [Audio](F8-audio.md) | @vivi09032000 | A must-have, and completely absent |
-| **F9** | [Post-processing](F9-postprocessing.md) | unclaimed | Highest fidelity-per-hour; independent of everything else |
+| **F9** | [Post-processing](F9-postprocessing.md) | @stevef24 | Highest fidelity-per-hour; independent of everything else |
+| **F10** | [Movement feel](F10-feel.md) | @dungle-scrubs | Fair timer blocks Keith's course tuning |
 
 ## Two rules
 
