@@ -1,0 +1,28 @@
+:root { color-scheme: dark; }
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; margin: 0; }
+body {
+  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+  background: #e8c79a;
+  overflow: hidden;
+}
+
+/* PLACEHOLDER styling — P5 owns the real HUD and screens. */
+.hud {
+  position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+  font-variant-numeric: tabular-nums;
+  font-size: 40px; font-weight: 700; color: #fff;
+  text-shadow: 0 2px 8px rgba(0,0,0,.5);
+  pointer-events: none;
+}
+.overlay {
+  position: fixed; inset: 0; display: grid; place-content: center;
+  gap: 12px; text-align: center; color: #3b2a1a;
+  background: rgba(255, 246, 230, .82);
+}
+.overlay h1 { margin: 0; font-size: 44px; }
+.overlay p { margin: 0; opacity: .75; }
+.overlay button {
+  justify-self: center; padding: 12px 32px; font-size: 18px; font-weight: 600;
+  color: #fff; background: #a63c2f; border: 0; border-radius: 10px; cursor: pointer;
+}
