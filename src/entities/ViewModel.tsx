@@ -140,7 +140,10 @@ export function useViewModel() {
     const bob = running ? Math.sin(bobPhase.current) * BOB_AMPLITUDE_M * (0.4 + 0.6 * frac) : 0;
     rig.position.set(REST_X, REST_Y + bob, REST_Z);
 
-    const lateralVelocity = running ? (runner.lateral - prevLateral.current) / dt : 0;
+    // dt can be 0 on the first frame and whenever the tab resumes. Without
+    // this guard an unchanged lateral gives 0/0 = NaN, which damp() carries
+    // into rig.rotation.z permanently -- the prop then never renders again.
+    const lateralVelocity = running && dt > 0 ? (runner.lateral - prevLateral.current) / dt : 0;
     prevLateral.current = runner.lateral;
     const leanTarget = clamp(-lateralVelocity / STEER_SPEED, -1, 1) * LEAN_MAX_RAD;
     rig.rotation.z = MathUtils.damp(rig.rotation.z, -0.15 + leanTarget, LEAN_RESPONSE, dt);
