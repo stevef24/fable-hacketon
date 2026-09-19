@@ -1,24 +1,34 @@
-// OWNER: P5 (vivi09032000). Everything on screen during a run.
+// OWNER: P5 (issue #12). In-run HUD, styled to docs/reference/11-hud-widget-kit.png.
+// Reads the store only -- never `runner`, never the game loop.
 import { useEffect, useState } from 'react';
-import { GATES, formatTime } from '../game/contract';
+import { GATES, START_GATE, formatTime } from '../game/contract';
 import { useGameStore } from '../game/store';
 import { isMuted, subscribeMute, toggleMute } from './audio';
 import './ui.css';
 
-/** P5 (vivi09032000). Persisted across runs by audio.ts. */
 export function MuteButton() {
   const [muted, setMuted] = useState(isMuted);
   useEffect(() => subscribeMute(setMuted), []);
   return (
     <button
-      className="cmd-mute"
+      className="icon-btn"
       aria-label={muted ? 'Unmute' : 'Mute'}
       aria-pressed={muted}
-      title={muted ? 'Unmute' : 'Mute'}
       onClick={() => toggleMute()}
     >
       {muted ? '\u{1F507}' : '\u{1F50A}'}
     </button>
+  );
+}
+
+/** Parchment stat plate: icon, count, label. */
+function Stat({ icon, value, label }: { icon: string; value: number; label: string }) {
+  return (
+    <div className="plate stat">
+      <span className="stat-icon">{icon}</span>
+      <span className="stat-value">{value}</span>
+      <span className="stat-label">{label}</span>
+    </div>
   );
 }
 
@@ -27,26 +37,40 @@ export default function HUD() {
   const elapsed = useGameStore((s) => s.elapsed);
   const speed = useGameStore((s) => s.displaySpeed);
   const gatesReached = useGameStore((s) => s.gatesReached);
+  const splits = useGameStore((s) => s.splits);
+  const stats = useGameStore((s) => s.stats);
   const flash = useGameStore((s) => s.flash);
   const heldMs = useGameStore((s) => s.heldMs);
   const heldBy = useGameStore((s) => s.heldBy);
-  const [visibleFlash, setVisibleFlash] = useState(flash);
 
+  const [popup, setPopup] = useState(flash);
   useEffect(() => {
     if (!flash) return;
-    setVisibleFlash(flash);
-    const id = setTimeout(() => setVisibleFlash(null), 1600);
+    setPopup(flash);
+    const id = setTimeout(() => setPopup(null), 1800);
     return () => clearTimeout(id);
   }, [flash]);
 
   if (phase !== 'running') return null;
 
+  const lastGate = splits.length ? splits[splits.length - 1].name : START_GATE;
+
   return (
     <div className="hud">
       <div className="hud-top">
-        <div className="timer-chip">
-          <span className="timer-icon">⏱</span>
-          <span className="timer">{formatTime(elapsed)}</span>
+        <div className="hud-row">
+          <div className="chip timer-chip">
+            <span className="chip-icon">&#9201;</span>
+            <span className="timer">{formatTime(elapsed)}</span>
+          </div>
+
+          <div className="plate checkpoint">
+            <span className="cp-icon">&#127983;</span>
+            <span className="cp-text">
+              <strong>{lastGate}</strong>
+              <em>Last checkpoint</em>
+            </span>
+          </div>
         </div>
 
         <div className="progress">
@@ -65,13 +89,23 @@ export default function HUD() {
               />
             ))}
           </div>
-          <span className="progress-label">🏁</span>
+          <span className="progress-label">&#127937;</span>
         </div>
       </div>
 
-      <div className="speed-chip">
-        <span className="speed-num">{speed.toFixed(1)}</span> m/s
+      <div className="hud-stats">
+        <Stat icon="&#128131;" value={stats.massageDelays} label="Massage" />
+        <Stat icon="&#128021;" value={stats.dogBoosts} label="Soi dogs" />
+        <Stat icon="&#127949;" value={stats.motorbikeHits} label="Motorbikes" />
+        <Stat icon="&#128167;" value={stats.wetZones} label="Wet zones" />
       </div>
+
+      <div className="chip speed-chip">
+        <span className="speed-num">{speed.toFixed(1)}</span>
+        <span className="speed-unit">m/s</span>
+      </div>
+
+      <MuteButton />
 
       {heldMs > 0 && (
         <div className="held">
@@ -83,11 +117,9 @@ export default function HUD() {
         </div>
       )}
 
-      <MuteButton />
-
-      {visibleFlash && (
-        <div className={`flash ${visibleFlash.good ? 'good' : 'bad'}`} key={visibleFlash.at}>
-          {visibleFlash.label}
+      {popup && (
+        <div className={`popup ${popup.good ? 'good' : 'bad'}`} key={popup.at}>
+          {popup.label}
         </div>
       )}
     </div>
