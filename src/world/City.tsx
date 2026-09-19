@@ -49,6 +49,20 @@ function rand(seed: number) {
   return x - Math.floor(x);
 }
 
+// The wall carries four gates, one per side -- Tha Phae (t=0), Chiang Mai
+// (0.25), Suan Dok (0.5), Chang Phuak (0.75), matching GATES in contract.ts
+// plus the start. Reference: docs/reference/, a real Chiang Mai wall photo
+// with a crenellated top and small square holes lower in the brick.
+const GATE_TS = [0, 0.25, 0.5, 0.75];
+const GATE_GAP_HALF_T = 0.004; // ~25.6m either side of the gate centre
+
+function nearGate(t: number): boolean {
+  return GATE_TS.some((gt) => {
+    const d = Math.abs(t - gt);
+    return Math.min(d, 1 - d) < GATE_GAP_HALF_T;
+  });
+}
+
 export default function City() {
   const road = useMemo(() => ribbon(8, 0, 0), []);
   const verge = useMemo(() => ribbon(13, -0.05, 0), []);
@@ -83,6 +97,7 @@ export default function City() {
     const out: { pos: [number, number, number]; yaw: number; h: number }[] = [];
     for (let i = 0; i < 640; i++) {
       const t = i / 640;
+      if (nearGate(t)) continue; // gap for the gate tower pair below
       const p = getPointAt(t, new Vector3());
       const r = getRightAt(t, new Vector3());
       const f = getTangentAt(t, new Vector3());
@@ -94,6 +109,62 @@ export default function City() {
     }
     return out;
   }, []);
+
+  // Crenellations along the whole wall, sampled finer than the wall itself
+  // so the merlon/gap rhythm reads as brick-scale, not segment-scale.
+  const MERLON_SAMPLES = 1280;
+  const merlons = useMemo(() => {
+    const out: { pos: [number, number, number]; yaw: number }[] = [];
+    for (let i = 0; i < MERLON_SAMPLES; i += 2) {
+      const t = i / MERLON_SAMPLES;
+      if (nearGate(t)) continue;
+      const p = getPointAt(t, new Vector3());
+      const r = getRightAt(t, new Vector3());
+      const f = getTangentAt(t, new Vector3());
+      out.push({
+        pos: [p.x - r.x * 46, 5.15, p.z - r.z * 46],
+        yaw: Math.atan2(f.x, f.z),
+      });
+    }
+    return out;
+  }, []);
+
+  // Small square drainage/arrow-slit holes, a third of the way up the wall
+  // face -- faked as dark insets rather than real geometry, same trick as
+  // every other flat cosmetic surface in this scene.
+  const HOLE_SAMPLES = 320;
+  const wallHoles = useMemo(() => {
+    const out: { pos: [number, number, number]; yaw: number }[] = [];
+    for (let i = 0; i < HOLE_SAMPLES; i++) {
+      const t = i / HOLE_SAMPLES;
+      if (nearGate(t)) continue;
+      const p = getPointAt(t, new Vector3());
+      const r = getRightAt(t, new Vector3());
+      const f = getTangentAt(t, new Vector3());
+      out.push({
+        pos: [p.x - r.x * 44.95, 1.9, p.z - r.z * 44.95],
+        yaw: Math.atan2(f.x, f.z),
+      });
+    }
+    return out;
+  }, []);
+
+  // A gate tower pair fills every wall gap -- the wall's own entrances,
+  // distinct from the road-level Gate the runner passes under.
+  const wallGates = useMemo(
+    () =>
+      GATE_TS.map((t) => {
+        const p = getPointAt(t, new Vector3());
+        const r = getRightAt(t, new Vector3());
+        const f = getTangentAt(t, new Vector3());
+        return {
+          id: `wall-${t}`,
+          pos: [p.x - r.x * 46, 0, p.z - r.z * 46] as [number, number, number],
+          yaw: Math.atan2(f.x, f.z),
+        };
+      }),
+    [],
+  );
 
   const buildings = useMemo(() => {
     const out: { pos: [number, number, number]; yaw: number; s: [number, number, number]; c: string }[] = [];
@@ -238,6 +309,31 @@ export default function City() {
           <Instance key={i} position={w.pos} rotation={[0, w.yaw, 0]} scale={[1, w.h, 1]} />
         ))}
       </Instances>
+
+      {/* Crenellations: the merlons riding the top of the wall. */}
+      <Instances limit={merlons.length} range={merlons.length}>
+        <boxGeometry args={[2.6, 1.5, 2.3]} />
+        <meshLambertMaterial color="#a8492f" />
+        {merlons.map((m, i) => (
+          <Instance key={i} position={m.pos} rotation={[0, m.yaw, 0]} />
+        ))}
+      </Instances>
+
+      {/* Small dark insets faking drainage/arrow-slit holes in the brick. */}
+      <Instances limit={wallHoles.length} range={wallHoles.length}>
+        <boxGeometry args={[0.7, 0.7, 0.15]} />
+        <meshLambertMaterial color="#3a1c12" />
+        {wallHoles.map((h, i) => (
+          <Instance key={i} position={h.pos} rotation={[0, h.yaw, 0]} />
+        ))}
+      </Instances>
+
+      {/* The wall's own entrances -- a gate tower pair fills each gap. */}
+      {wallGates.map((g) => (
+        <group key={g.id} position={g.pos} rotation={[0, g.yaw, 0]}>
+          <Gate />
+        </group>
+      ))}
 
       <Instances limit={buildings.length} range={buildings.length}>
         <boxGeometry args={[1, 1, 1]} />
