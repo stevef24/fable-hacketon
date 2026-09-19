@@ -63,6 +63,48 @@ function nearGate(t: number): boolean {
   });
 }
 
+/**
+ * A tapering temple spire: plinth, dome, spire, gold tip. Non-instanced --
+ * there are only a handful, each needs distinct per-tier geometry anyway,
+ * and a handful of extra draw calls is nothing next to the walls/buildings.
+ */
+function Chedi({ position }: { position: [number, number, number] }) {
+  return (
+    <group position={position}>
+      <mesh position={[0, 2, 0]} castShadow>
+        <boxGeometry args={[9, 4, 9]} />
+        <meshLambertMaterial color="#e8d5a8" />
+      </mesh>
+      <mesh position={[0, 5.5, 0]} castShadow>
+        <boxGeometry args={[6.5, 3, 6.5]} />
+        <meshLambertMaterial color="#d9c088" />
+      </mesh>
+      <mesh position={[0, 9, 0]} castShadow>
+        <sphereGeometry args={[3.6, 12, 8]} />
+        <meshLambertMaterial color="#efe0b8" />
+      </mesh>
+      <mesh position={[0, 15, 0]} castShadow>
+        <coneGeometry args={[1.6, 9, 10]} />
+        <meshStandardMaterial
+          color="#f2c94c"
+          emissive="#e8b23a"
+          emissiveIntensity={0.6}
+          toneMapped={false}
+        />
+      </mesh>
+      <mesh position={[0, 20, 0]}>
+        <sphereGeometry args={[0.5, 8, 8]} />
+        <meshStandardMaterial
+          color="#fff2b8"
+          emissive="#fff2b8"
+          emissiveIntensity={1.4}
+          toneMapped={false}
+        />
+      </mesh>
+    </group>
+  );
+}
+
 export default function City() {
   const road = useMemo(() => ribbon(8, 0, 0), []);
   const verge = useMemo(() => ribbon(13, -0.05, 0), []);
@@ -216,6 +258,21 @@ export default function City() {
       out.push({ pos: [p.x + r.x * 10.5, 0, p.z + r.z * 10.5] });
     }
     return out;
+  }, []);
+
+  // Temple chedis: a handful of tapering spires across the moat from the
+  // road (the wall side, #10's "chedi silhouette inside the moat" ask that
+  // the shophouse terrace pass didn't cover). Sparse and non-instanced --
+  // there are only a few, and their stepped silhouette (plinth/dome/spire)
+  // needs distinct geometry per tier anyway. Placed past the wall so they
+  // read as skyline landmarks from anywhere on the lap.
+  const chedis = useMemo(() => {
+    const ts = [0.06, 0.22, 0.47, 0.58, 0.82, 0.93];
+    return ts.map((t, i) => {
+      const p = getPointAt(t, new Vector3());
+      const r = getRightAt(t, new Vector3());
+      return { id: i, pos: [p.x - r.x * 68, 0, p.z - r.z * 68] as [number, number, number] };
+    });
   }, []);
 
   const trees = useMemo(() => {
@@ -402,6 +459,11 @@ export default function City() {
         <group key={g.id} position={g.pos} rotation={[0, g.yaw, 0]}>
           <Gate thai={g.thai} roman={g.name} />
         </group>
+      ))}
+
+      {/* Temple chedis: rare skyline landmarks across the moat. */}
+      {chedis.map((c) => (
+        <Chedi key={c.id} position={c.pos} />
       ))}
 
       {/* shophouse walls */}
