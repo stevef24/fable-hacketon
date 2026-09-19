@@ -1,6 +1,8 @@
 // OWNER: P1 (Stav). Scene assembly, first-person camera, phase routing.
 import { useEffect, useRef } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
+import { Bloom, EffectComposer, Vignette } from '@react-three/postprocessing';
+import { ACESFilmicToneMapping } from 'three';
 import { Vector3 } from 'three';
 import { BASE_SPEED, TRACK_LENGTH } from './game/contract';
 import { runner } from './game/runner';
@@ -70,10 +72,16 @@ export default function App() {
       <Canvas
         camera={{ fov: 74, position: [START.x, EYE_HEIGHT, START.z], near: 0.1, far: 1400 }}
         dpr={[1, 1.75]}
+        gl={{ antialias: true, toneMapping: ACESFilmicToneMapping, toneMappingExposure: 1.55 }}
       >
         <City />
         <Obstacles />
         <FirstPersonRig />
+        {/* Restrained on purpose: overdone bloom reads as a tech demo. */}
+        <EffectComposer>
+          <Bloom intensity={0.55} luminanceThreshold={0.62} luminanceSmoothing={0.3} mipmapBlur />
+          <Vignette offset={0.22} darkness={0.62} />
+        </EffectComposer>
       </Canvas>
       <HUD />
       <Screens />

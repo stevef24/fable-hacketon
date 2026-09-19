@@ -138,7 +138,7 @@ const ROWS: Row[] = [
 
 const counts: Record<string, number> = {};
 
-export const COURSE: CourseEntry[] = ROWS.map(([kind, metres, lane, rides]) => {
+const authored: CourseEntry[] = ROWS.map(([kind, metres, lane, rides]) => {
   const n = (counts[kind] = (counts[kind] ?? 0) + 1);
   return {
     id: `${kind}-${n}`,
@@ -148,6 +148,57 @@ export const COURSE: CourseEntry[] = ROWS.map(([kind, metres, lane, rides]) => {
     ...(rides ? { ride: RIDE } : {}),
   };
 });
+
+// ── Density fill ──────────────────────────────────────────────────────────
+// The authored ROWS above were tuned for a 1200m lap. On the real 6400m moat
+// their absolute-metre offsets leave gaps of up to 754m -- about 47 seconds of
+// empty road. This walks the authored list and drops extra obstacles into any
+// gap wider than MAX_GAP so there is always something coming.
+//
+// Keith: this is a stopgap for the demo, not a replacement for issue #7.
+// Hand-authored pacing beats generated pacing every time; delete this the
+// moment your retuned ROWS cover the lap.
+const MAX_GAP = 95; // metres of clear road before we fill
+const FILL_KINDS: ObstacleSpec['kind'][] = [
+  'motorbike', 'splash', 'food', 'massage', 'motorbike', 'splash', 'massage', 'dog',
+];
+const FILL_LANES = [-0.65, 0.4, -0.2, 0.7, 0.15, -0.45, 0.6, -0.75];
+
+function fill(list: CourseEntry[]): CourseEntry[] {
+  const out: CourseEntry[] = [];
+  let n = 0;
+  const startM = CLEAR_ZONE * TRACK_LENGTH;
+  let cursor = startM;
+
+  const push = (from: number, to: number) => {
+    const span = to - from;
+    if (span <= MAX_GAP) return;
+    const count = Math.floor(span / MAX_GAP);
+    const step = span / (count + 1);
+    for (let i = 1; i <= count; i++) {
+      const metres = from + step * i;
+      const kind = FILL_KINDS[n % FILL_KINDS.length];
+      out.push({
+        id: `fill-${n}`,
+        kind,
+        t: metres / TRACK_LENGTH,
+        lane: FILL_LANES[n % FILL_LANES.length],
+      });
+      n++;
+    }
+  };
+
+  for (const entry of list) {
+    const metres = entry.t * TRACK_LENGTH;
+    push(cursor, metres);
+    out.push(entry);
+    cursor = metres;
+  }
+  push(cursor, TRACK_LENGTH - 25);
+  return out.sort((a, b) => a.t - b.t);
+}
+
+export const COURSE: CourseEntry[] = fill(authored);
 
 if (import.meta.env.DEV) {
   COURSE.forEach((o, i) => {

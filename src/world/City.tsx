@@ -101,6 +101,55 @@ export default function City() {
     return out;
   }, []);
 
+  const lanterns = useMemo(() => {
+    const out: [number, number, number][] = [];
+    for (let i = 0; i < 260; i++) {
+      const t = i / 260;
+      const p = getPointAt(t, new Vector3());
+      const r = getRightAt(t, new Vector3());
+      out.push([p.x + r.x * 11, 4.6, p.z + r.z * 11]);
+    }
+    return out;
+  }, []);
+
+  // Spectators lining the city side, plus market stalls and umbrellas.
+  // Everything instanced: this is several hundred objects on a 6.4km lap.
+  const crowd = useMemo(() => {
+    const out: { pos: [number, number, number]; c: string; h: number }[] = [];
+    const shirts = ['#e8442f', '#f2b134', '#2f7fbf', '#f0f0f0', '#57a05a', '#d46aa8'];
+    for (let i = 0; i < 520; i++) {
+      const t = i / 520;
+      const p = getPointAt(t, new Vector3());
+      const r = getRightAt(t, new Vector3());
+      const side = rand(i * 1.7) > 0.35 ? 1 : -1;
+      const off = side * (9.5 + rand(i * 2.9) * 3.5);
+      out.push({
+        pos: [p.x + r.x * off, 0, p.z + r.z * off],
+        c: shirts[Math.floor(rand(i * 4.3) * shirts.length)],
+        h: 0.85 + rand(i * 6.1) * 0.3,
+      });
+    }
+    return out;
+  }, []);
+
+  const stalls = useMemo(() => {
+    const out: { pos: [number, number, number]; yaw: number; c: string }[] = [];
+    const canopy = ['#e8442f', '#f2b134', '#2f7fbf', '#f0f0f0'];
+    for (let i = 0; i < 120; i++) {
+      const t = i / 120 + 0.004;
+      const p = getPointAt(t, new Vector3());
+      const r = getRightAt(t, new Vector3());
+      const f = getTangentAt(t, new Vector3());
+      const off = 14 + rand(i * 3.7) * 4;
+      out.push({
+        pos: [p.x + r.x * off, 0, p.z + r.z * off],
+        yaw: Math.atan2(f.x, f.z),
+        c: canopy[Math.floor(rand(i * 8.3) * canopy.length)],
+      });
+    }
+    return out;
+  }, []);
+
   const gates = useMemo(
     () =>
       [{ id: 'start', name: 'Tha Phae Gate', t: 0 }, ...GATES.slice(0, 3)].map((g) => {
@@ -113,30 +162,33 @@ export default function City() {
 
   return (
     <>
-      <color attach="background" args={['#f0b978']} />
-      <fog attach="fog" args={['#f0b978', 90, 520]} />
-      <hemisphereLight args={['#ffe2b0', '#5c4630', 1.05]} />
-      <directionalLight position={[-160, 120, 80]} intensity={1.5} color="#ffd08a" />
+      <color attach="background" args={['#ffd9a0']} />
+      <fog attach="fog" args={['#ffcf93', 150, 1000]} />
+      {/* Low warm key, cool sky fill -- golden hour, per docs/reference/. */}
+      <hemisphereLight args={['#bfe0ff', '#6b4a2a', 0.75]} />
+      <directionalLight position={[-320, 90, 140]} intensity={2.6} color="#ffc77d" />
+      <directionalLight position={[220, 60, -180]} intensity={0.4} color="#8fb6ff" />
+      <ambientLight intensity={0.18} color="#ffd9a8" />
 
       {/* ground */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.3, 0]}>
         <planeGeometry args={[4200, 4200]} />
-        <meshLambertMaterial color="#6f7a4a" />
+        <meshLambertMaterial color="#8a9a52" />
       </mesh>
 
       <mesh geometry={verge}>
-        <meshLambertMaterial color="#8d8468" />
+        <meshLambertMaterial color="#b09a72" />
       </mesh>
       <mesh geometry={road}>
-        <meshLambertMaterial color="#b0a48c" />
+        <meshLambertMaterial color="#d8c49c" />
       </mesh>
       <mesh geometry={moat}>
-        <meshLambertMaterial color="#3f92b0" />
+        <meshLambertMaterial color="#49b9d6" />
       </mesh>
 
       <Instances limit={walls.length} range={walls.length}>
         <boxGeometry args={[10.4, 1, 2.2]} />
-        <meshLambertMaterial color="#9c4a33" />
+        <meshLambertMaterial color="#c4603f" />
         {walls.map((w, i) => (
           <Instance key={i} position={w.pos} rotation={[0, w.yaw, 0]} scale={[1, w.h, 1]} />
         ))}
@@ -154,6 +206,52 @@ export default function City() {
         <sphereGeometry args={[2.6, 6, 5]} />
         <meshLambertMaterial color="#3f6b35" />
         {trees.map((p, i) => (
+          <Instance key={i} position={p} />
+        ))}
+      </Instances>
+
+      {/* crowd: bodies */}
+      <Instances limit={crowd.length} range={crowd.length}>
+        <boxGeometry args={[0.5, 1.1, 0.35]} />
+        <meshLambertMaterial />
+        {crowd.map((c, i) => (
+          <Instance key={i} position={[c.pos[0], 0.55 * c.h + 0.1, c.pos[2]]} scale={[1, c.h, 1]} color={c.c} />
+        ))}
+      </Instances>
+      {/* crowd: heads */}
+      <Instances limit={crowd.length} range={crowd.length}>
+        <boxGeometry args={[0.34, 0.34, 0.3]} />
+        <meshLambertMaterial color="#d9a06a" />
+        {crowd.map((c, i) => (
+          <Instance key={i} position={[c.pos[0], 1.15 * c.h + 0.1, c.pos[2]]} />
+        ))}
+      </Instances>
+      {/* market stall canopies */}
+      <Instances limit={stalls.length} range={stalls.length}>
+        <boxGeometry args={[3.4, 0.18, 2.4]} />
+        <meshLambertMaterial />
+        {stalls.map((st, i) => (
+          <Instance key={i} position={[st.pos[0], 2.5, st.pos[2]]} rotation={[0, st.yaw, 0]} color={st.c} />
+        ))}
+      </Instances>
+      {/* stall tables */}
+      <Instances limit={stalls.length} range={stalls.length}>
+        <boxGeometry args={[3, 0.9, 1.6]} />
+        <meshLambertMaterial color="#8a6a4a" />
+        {stalls.map((st, i) => (
+          <Instance key={i} position={[st.pos[0], 0.45, st.pos[2]]} rotation={[0, st.yaw, 0]} />
+        ))}
+      </Instances>
+
+      <Instances limit={lanterns.length} range={lanterns.length}>
+        <boxGeometry args={[0.85, 1.3, 0.85]} />
+        <meshStandardMaterial
+          color="#ff7a2f"
+          emissive="#ff9440"
+          emissiveIntensity={2.6}
+          toneMapped={false}
+        />
+        {lanterns.map((p, i) => (
           <Instance key={i} position={p} />
         ))}
       </Instances>
