@@ -17,6 +17,10 @@ export interface Effect {
   good: boolean;
   /** Counter incremented on the results screen. */
   stat: keyof RunStats;
+  /** Milliseconds the runner is stopped dead. Costs time, not distance. */
+  holdMs?: number;
+  /** What they say while they have hold of you. */
+  line?: string;
 }
 
 /** Contact box, metres: half-depth along the road, half-width across it. */
@@ -32,24 +36,29 @@ export function isHit(dist: number, laneX: number) {
 
 export const EFFECTS: Record<ObstacleKind, Effect> = {
   motorbike: {
-    multiplier: 0.5, durationMs: 900, resetToGate: true,
-    label: 'Crash! Back to the last gate', good: false, stat: 'motorbikeHits',
+    multiplier: 0.5, durationMs: 900, resetToGate: true, holdMs: 1400,
+    label: 'Crash!', line: 'Back to the last gate...', good: false, stat: 'motorbikeHits',
   },
+  // The signature obstacle. Five full seconds of being talked at is the
+  // single most expensive thing that can happen to a runner, and the funniest.
   massage: {
-    multiplier: 0.5, durationMs: 1000, distance: -15,
-    label: 'Massage? Relax!', good: false, stat: 'massageDelays',
+    multiplier: 0.55, durationMs: 1600, holdMs: 5000,
+    label: 'Massage? Relax!', line: 'Thai massage, very good price, come come!',
+    good: false, stat: 'massageDelays',
   },
   food: {
-    multiplier: 0.6, durationMs: 2500,
-    label: 'Mango sticky rice!', good: false, stat: 'snacks',
+    multiplier: 0.6, durationMs: 2500, holdMs: 3000,
+    label: 'Mango sticky rice!', line: 'Very fresh! You try one, yes?',
+    good: false, stat: 'snacks',
   },
   dog: {
     multiplier: 1.55, durationMs: 3000,
     label: 'Soi dog chase!', good: true, stat: 'dogBoosts',
   },
   splash: {
-    multiplier: 0.8, durationMs: 1500,
-    label: 'Songkran splash!', good: false, stat: 'wetZones',
+    multiplier: 0.72, durationMs: 2200, holdMs: 900,
+    label: 'Songkran splash!', line: 'Sawasdee pee mai!',
+    good: false, stat: 'wetZones',
   },
 };
 
@@ -63,6 +72,12 @@ let seq = 0;
  */
 export function applyEffect(kind: ObstacleKind, now = performance.now()): Modifier {
   const effect = EFFECTS[kind];
+  if (effect.holdMs) {
+    // Longest hold wins rather than summing: three massage ladies in a row
+    // should be funny, not a thirty-second standstill.
+    runner.heldMs = Math.max(runner.heldMs, effect.holdMs);
+    runner.heldBy = effect.line ?? effect.label;
+  }
   if (effect.resetToGate) {
     runner.distance = runner.lastGateDistance;
   } else if (effect.distance) {

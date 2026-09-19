@@ -25,8 +25,16 @@
 //     the reward: 21.7 m/s and a market stall do not mix).
 import { BASE_SPEED, TRACK_LENGTH, type ObstacleSpec } from '../game/contract';
 
-/** Fraction of the lap at the start that must stay empty so players learn to steer. */
-export const CLEAR_ZONE = 0.08;
+/**
+ * Opening stretch that stays empty so players learn to steer, in METRES.
+ *
+ * This was a lap fraction (0.08), which was right for the 1200m track it was
+ * written against -- 96m, about six seconds. On the real 6400m moat the same
+ * fraction became 512m, so the first obstacle sat 38 seconds into the run and
+ * the game looked empty. A learning zone is a fixed span of road, not a
+ * proportion of the lap, so it is absolute now.
+ */
+export const CLEAR_ZONE_M = 110;
 
 /** Metres along the lap. */
 // Expressed as fractions of the lap so they survive TRACK_LENGTH changing.
@@ -158,16 +166,20 @@ const authored: CourseEntry[] = ROWS.map(([kind, metres, lane, rides]) => {
 // Keith: this is a stopgap for the demo, not a replacement for issue #7.
 // Hand-authored pacing beats generated pacing every time; delete this the
 // moment your retuned ROWS cover the lap.
-const MAX_GAP = 95; // metres of clear road before we fill
+const MAX_GAP = 58; // metres of clear road before we fill -- ~3.6s at base speed
 const FILL_KINDS: ObstacleSpec['kind'][] = [
   'motorbike', 'splash', 'food', 'massage', 'motorbike', 'splash', 'massage', 'dog',
 ];
-const FILL_LANES = [-0.65, 0.4, -0.2, 0.7, 0.15, -0.45, 0.6, -0.75];
+// Weighted toward the centre on purpose. Keith's own note: an obstacle with
+// |lane| < ~0.27 sits on the centreline and catches anyone who never steers,
+// so central lanes are the difficulty knob and edge lanes are gifts. Most of
+// these must actually be dodged.
+const FILL_LANES = [-0.15, 0.55, 0.1, -0.6, 0.22, -0.25, 0.65, 0, -0.45, 0.18];
 
 function fill(list: CourseEntry[]): CourseEntry[] {
   const out: CourseEntry[] = [];
   let n = 0;
-  const startM = CLEAR_ZONE * TRACK_LENGTH;
+  const startM = CLEAR_ZONE_M;
   let cursor = startM;
 
   const push = (from: number, to: number) => {
@@ -202,7 +214,8 @@ export const COURSE: CourseEntry[] = fill(authored);
 
 if (import.meta.env.DEV) {
   COURSE.forEach((o, i) => {
-    if (o.t < CLEAR_ZONE) console.warn(`course: ${o.id} sits inside the ${CLEAR_ZONE * 100}% clear zone`);
+    if (o.t * TRACK_LENGTH < CLEAR_ZONE_M)
+      console.warn(`course: ${o.id} sits inside the ${CLEAR_ZONE_M}m clear zone`);
     if (i > 0 && o.t < COURSE[i - 1].t) console.warn(`course: ${o.id} is out of order`);
   });
 }

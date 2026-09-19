@@ -13,6 +13,18 @@ export interface Runner {
   lastGateDistance: number;
   /** How many of the four gates have been reached. */
   gateIndex: number;
+  /**
+   * Milliseconds of hold remaining, counted down in simulated time. A speed
+   * multiplier alone cannot stop anyone -- MIN_SPEED clamps the floor at
+   * 5 m/s -- so being buttonholed by a massage lady needs its own state.
+   *
+   * Deliberately a countdown rather than a performance.now() deadline: the
+   * lap timer is frame-accumulated, and mixing wall-clock with simulated
+   * time would make a hold cost different amounts on different machines.
+   */
+  heldMs: number;
+  /** What is holding you, for the HUD to caption. */
+  heldBy: string;
 }
 
 export const runner: Runner = {
@@ -22,6 +34,8 @@ export const runner: Runner = {
   modifiers: [],
   lastGateDistance: 0,
   gateIndex: 0,
+  heldMs: 0,
+  heldBy: '',
 };
 
 export function resetRunner() {
@@ -31,4 +45,6 @@ export function resetRunner() {
   runner.modifiers.length = 0;
   runner.lastGateDistance = 0;
   runner.gateIndex = 0;
+  runner.heldMs = 0;
+  runner.heldBy = '';
 }

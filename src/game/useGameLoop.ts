@@ -73,6 +73,23 @@ export function useGameLoop() {
       if (runner.modifiers[i].until <= now) runner.modifiers.splice(i, 1);
     }
 
+    // Being held stops you dead. The lap timer keeps running, so the cost is
+    // paid in seconds rather than metres -- which is the whole joke.
+    if (runner.heldMs > 0) {
+      runner.heldMs = Math.max(0, runner.heldMs - dt * 1000);
+      runner.speed = 0;
+      if (now - hudAt.current > 100) {
+        hudAt.current = now;
+        store.setHud(simMs.current, 0);
+        store.setHeld(runner.heldMs, runner.heldBy);
+      }
+      return;
+    }
+    if (runner.heldBy) {
+      runner.heldBy = '';
+      store.setHeld(0, '');
+    }
+
     let mult = 1;
     for (const m of runner.modifiers) mult *= m.multiplier;
     runner.speed = clamp(BASE_SPEED * mult, MIN_SPEED, MAX_SPEED);

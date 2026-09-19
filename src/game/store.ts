@@ -27,6 +27,9 @@ interface GameState {
   gatesReached: number;
   splits: Split[];
   stats: RunStats;
+  /** Milliseconds remaining on a hold, and who is doing the holding. */
+  heldMs: number;
+  heldBy: string;
   /** Transient caption, e.g. "Soi dog chase!". */
   flash: { label: string; good: boolean; at: number } | null;
   lastMs: number;
@@ -37,6 +40,7 @@ interface GameState {
   finish: (ms: number) => void;
   reset: () => void;
   setHud: (elapsed: number, speed: number) => void;
+  setHeld: (heldMs: number, heldBy: string) => void;
   passGate: (name: string, splitMs: number) => void;
   bumpStat: (key: keyof RunStats, by?: number) => void;
   showFlash: (label: string, good: boolean) => void;
@@ -58,6 +62,8 @@ export const useGameStore = create<GameState>()((set, get) => ({
   gatesReached: 0,
   splits: [],
   stats: emptyStats(),
+  heldMs: 0,
+  heldBy: '',
   flash: null,
   lastMs: 0,
   bestMs: loadBest(),
@@ -71,6 +77,8 @@ export const useGameStore = create<GameState>()((set, get) => ({
       gatesReached: 0,
       splits: [],
       stats: emptyStats(),
+      heldMs: 0,
+      heldBy: '',
       flash: null,
       isRecord: false,
     }),
@@ -88,9 +96,11 @@ export const useGameStore = create<GameState>()((set, get) => ({
     set({ phase: 'finished', lastMs: ms, bestMs: isRecord ? ms : best, isRecord });
   },
 
-  reset: () => set({ phase: 'menu', elapsed: 0, displaySpeed: 0, flash: null }),
+  reset: () => set({ phase: 'menu', elapsed: 0, displaySpeed: 0, heldMs: 0, heldBy: '', flash: null }),
 
   setHud: (elapsed, displaySpeed) => set({ elapsed, displaySpeed }),
+
+  setHeld: (heldMs, heldBy) => set({ heldMs, heldBy }),
 
   passGate: (name, ms) =>
     set((s) => ({
@@ -104,3 +114,11 @@ export const useGameStore = create<GameState>()((set, get) => ({
 
   showFlash: (label, good) => set({ flash: { label, good, at: performance.now() } }),
 }));
+
+// Dev affordance: forcing a state from the console beats running 167m of road
+// to see one caption. In the browser console, e.g.
+//   __store.getState().setHeld(5000, 'Thai massage, very good price!')
+//   __store.getState().finish(402_000)
+if (import.meta.env.DEV) {
+  (window as unknown as { __store: typeof useGameStore }).__store = useGameStore;
+}

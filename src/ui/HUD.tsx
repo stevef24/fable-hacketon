@@ -28,6 +28,8 @@ export default function HUD() {
   const speed = useGameStore((s) => s.displaySpeed);
   const gatesReached = useGameStore((s) => s.gatesReached);
   const flash = useGameStore((s) => s.flash);
+  const heldMs = useGameStore((s) => s.heldMs);
+  const heldBy = useGameStore((s) => s.heldBy);
   const [visibleFlash, setVisibleFlash] = useState(flash);
 
   useEffect(() => {
@@ -70,6 +72,16 @@ export default function HUD() {
       <div className="speed-chip">
         <span className="speed-num">{speed.toFixed(1)}</span> m/s
       </div>
+
+      {heldMs > 0 && (
+        <div className="held">
+          <div className="held-bubble">{heldBy}</div>
+          <div className="held-count">{(heldMs / 1000).toFixed(1)}s</div>
+          <div className="held-bar">
+            <div className="held-bar-fill" style={{ width: `${Math.min(100, heldMs / 50)}%` }} />
+          </div>
+        </div>
+      )}
 
       <MuteButton />
 
