@@ -7,6 +7,7 @@ import { Vector3, type Group } from 'three';
 import { ROAD_HALF_WIDTH, TRACK_LENGTH, clamp, type ObstacleKind } from '../game/contract';
 import { runner } from '../game/runner';
 import { useGameStore } from '../game/store';
+import { emitEffect, playForKind } from '../ui/audio';
 import { getPointAt, getRightAt, getTangentAt } from '../game/track';
 import { COURSE, type CourseEntry } from './course';
 import { EFFECTS, HIT_LATERAL, applyEffect, isHit } from './effects';
@@ -274,6 +275,8 @@ export function Obstacles() {
           const store = useGameStore.getState();
           store.bumpStat(effect.stat);
           store.showFlash(effect.label, effect.good);
+          emitEffect(spec.kind);
+          playForKind(spec.kind);
         }
         continue;
       }

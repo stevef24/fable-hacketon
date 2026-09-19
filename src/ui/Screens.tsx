@@ -1,6 +1,14 @@
 // OWNER: P5 (vivi09032000). Title and results screens.
 import { GATES, formatSplit, formatTime, rankFor } from '../game/contract';
 import { useGameStore } from '../game/store';
+import { init as initAudio, startMusic, stopMusic } from './audio';
+
+/** Audio must be unlocked by a user gesture, so it starts from the button. */
+function beginRun(start: () => void) {
+  initAudio();
+  startMusic();
+  start();
+}
 
 function Title() {
   const start = useGameStore((s) => s.start);
@@ -32,7 +40,7 @@ function Title() {
           <span className="logo-runner">Runner</span>
         </h1>
         <p className="tagline">Run the Chiang Mai Moat</p>
-        <button className="btn btn-go" onClick={start}>
+        <button className="btn btn-go" onClick={() => beginRun(start)}>
           ▶ Start Run
         </button>
         <p className="hint">A / D or ← / → to steer</p>
@@ -103,8 +111,8 @@ function Results() {
       </div>
 
       <div className="actions">
-        <button className="btn btn-again" onClick={start}>↻ Run Again</button>
-        <button className="btn btn-menu" onClick={reset}>Menu</button>
+        <button className="btn btn-again" onClick={() => beginRun(start)}>↻ Run Again</button>
+        <button className="btn btn-menu" onClick={() => { stopMusic(); reset(); }}>Menu</button>
       </div>
     </div>
   );

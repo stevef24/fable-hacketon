@@ -2,6 +2,25 @@
 import { useEffect, useState } from 'react';
 import { GATES, formatTime } from '../game/contract';
 import { useGameStore } from '../game/store';
+import { isMuted, subscribeMute, toggleMute } from './audio';
+import './ui.css';
+
+/** P5 (vivi09032000). Persisted across runs by audio.ts. */
+export function MuteButton() {
+  const [muted, setMuted] = useState(isMuted);
+  useEffect(() => subscribeMute(setMuted), []);
+  return (
+    <button
+      className="cmd-mute"
+      aria-label={muted ? 'Unmute' : 'Mute'}
+      aria-pressed={muted}
+      title={muted ? 'Unmute' : 'Mute'}
+      onClick={() => toggleMute()}
+    >
+      {muted ? '\u{1F507}' : '\u{1F50A}'}
+    </button>
+  );
+}
 
 export default function HUD() {
   const phase = useGameStore((s) => s.phase);
@@ -51,6 +70,8 @@ export default function HUD() {
       <div className="speed-chip">
         <span className="speed-num">{speed.toFixed(1)}</span> m/s
       </div>
+
+      <MuteButton />
 
       {visibleFlash && (
         <div className={`flash ${visibleFlash.good ? 'good' : 'bad'}`} key={visibleFlash.at}>
